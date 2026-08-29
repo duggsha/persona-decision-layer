@@ -436,7 +436,7 @@ struct QueueView: View {
 
             GeometryReader { geo in
                 let slot = geo.size.height * 0.82
-                let topGap: CGFloat = (geo.size.height - geo.size.height * 0.82) / 2
+                let topGap: CGFloat = 10
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 22) {
                         if day.queue.isEmpty {
@@ -502,7 +502,8 @@ struct QueueView: View {
                 .onChange(of: day.feedPage) { _, p in
                     if p == .autoText { day.autoTextSeen() }
                 }
-                .contentMargins(.vertical, topGap, for: .scrollContent)
+                .contentMargins(.top, topGap, for: .scrollContent)
+                .contentMargins(.bottom, max(14, (geo.size.height - slot) - topGap), for: .scrollContent)
             }
         }
     }
@@ -1070,6 +1071,54 @@ struct HowItGotHere: View {
     }
 }
 
+// Primary action with a rule attached: approve now, or teach it forever.
+struct SplitAction<Menu: View>: View {
+    let title: String
+    let action: () -> Void
+    @Binding var open: Bool
+    @ViewBuilder var menu: Menu
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 1) {
+                Button(action: action) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                }
+                .buttonStyle(.plain)
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.14))
+                    .frame(width: 1, height: 26)
+
+                Button {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { open.toggle() }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Ink.secondary)
+                        .rotationEffect(.degrees(open ? 180 : 0))
+                        .frame(width: 44, height: 50)
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color.white.opacity(0.17), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.32), lineWidth: 1)
+            }
+
+            if open {
+                menu
+                    .transition(.opacity.combined(with: .offset(y: -6)))
+            }
+        }
+    }
+}
+
 // Dark bordered buttons, the DUGGOS pair. Primary is the lighter one.
 struct DarkButton: ButtonStyle {
     var prominent = false
@@ -1096,6 +1145,7 @@ struct DarkButton: ButtonStyle {
 
 struct DinnerCard: View {
     @EnvironmentObject var day: DayEngine
+    @State private var ruleOpen = false
     private let times = ["7:45", "8:00", "8:15", "8:30"]
 
     private var inRun: Bool {
@@ -1109,7 +1159,7 @@ struct DinnerCard: View {
         Group {
             if inRun {
                 RunSurface(kind: "Reservation", steps: day.runSteps, running: day.stage != .lowDone) {
-                    graduationRow
+                    EmptyView()
                 } terminal: {
                     runTerminal
                 }
@@ -1300,11 +1350,12 @@ struct DinnerCard: View {
                 }
                 .transition(.opacity.combined(with: .offset(y: 5)))
             } else {
-                HStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
                     Button("Keep 7:30") { day.declineLow() }
                         .buttonStyle(DarkButton())
-                    Button("Move it") { day.approveLow() }
-                        .buttonStyle(DarkButton(prominent: true))
+                    SplitAction(title: "Move it", action: { day.approveLow() }, open: $ruleOpen) {
+                        graduationRow
+                    }
                 }
             }
         }
@@ -1315,6 +1366,7 @@ struct DinnerCard: View {
 
 struct MessageCard: View {
     @EnvironmentObject var day: DayEngine
+    @State private var ruleOpen = false
     @State private var editText = ""
     @FocusState private var editing: Bool
 
@@ -1354,7 +1406,7 @@ struct MessageCard: View {
         Group {
             if inRun {
                 RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 4) {
-                    graduationRowMsg
+                    EmptyView()
                 } terminal: {
                     if day.runSteps.count >= 4 {
                         SentSeal {
@@ -1559,10 +1611,30 @@ struct MessageCard: View {
                 }
                 .frame(height: 48)
             } else if !day.editingHigh {
-                HStack(spacing: 10) {
-                    Button("Don't send") { day.declineHigh() }
-                        .buttonStyle(DarkButton())
-                    HoldToSend(label: "Hold to Send") { day.sendHigh() }
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        Button("Don't send") { day.declineHigh() }
+                            .buttonStyle(DarkButton())
+                        HStack(spacing: 1) {
+                            HoldToSend(label: "Hold to Send") { day.sendHigh() }
+                            Button {
+                                withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { ruleOpen.toggle() }
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Ink.secondary)
+                                    .rotationEffect(.degrees(ruleOpen ? 180 : 0))
+                                    .frame(width: 40, height: 46)
+                                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if ruleOpen { graduationRowMsg.transition(.opacity.combined(with: .offset(y: -6))) }
                 }
             }
         }
@@ -1573,6 +1645,7 @@ struct MessageCard: View {
 
 struct PayCard: View {
     @EnvironmentObject var day: DayEngine
+    @State private var ruleOpen = false
 
     private var inRun: Bool { day.stage == .payDone }
 
@@ -1580,7 +1653,7 @@ struct PayCard: View {
         Group {
             if inRun {
                 RunSurface(kind: "Payment", steps: day.runSteps, running: day.runSteps.count < 4) {
-                    graduationRowPay
+                    EmptyView()
                 } terminal: {
                     if day.runSteps.count >= 4 {
                         VStack(alignment: .leading, spacing: 8) {
@@ -1705,11 +1778,12 @@ struct PayCard: View {
                 }
                 .frame(height: 48)
             } else {
-                HStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
                     Button("Not now") { day.declinePay() }
                         .buttonStyle(DarkButton())
-                    Button("Pay $25") { day.payTapped() }
-                        .buttonStyle(DarkButton(prominent: true))
+                    SplitAction(title: "Pay $25", action: { day.payTapped() }, open: $ruleOpen) {
+                        graduationRowPay
+                    }
                 }
             }
         }

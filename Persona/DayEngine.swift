@@ -213,8 +213,12 @@ final class DayEngine: ObservableObject {
     }
 
     // Done things leave the queue. The queue is only what needs you.
+    // The auto card belongs only after Maya's ask is settled.
     var queue: [Scenario] {
-        Scenario.allCases.filter { !isResolved($0) || isActive($0) }
+        Scenario.allCases.filter { s in
+            if s == .autoText { return mayaNote != nil && !autoTextResolved }
+            return !isResolved(s) || isActive(s)
+        }
     }
 
     var cardUp: Bool { stage != .idle && !feedOpen }
@@ -261,7 +265,7 @@ final class DayEngine: ObservableObject {
     func autoTextSeen() {
         guard !autoTextResolved else { return }
         Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_600_000_000)
+            try? await Task.sleep(nanoseconds: 5_200_000_000)
             guard let self, !self.autoTextResolved else { return }
             Haptic.light()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
@@ -315,7 +319,7 @@ final class DayEngine: ObservableObject {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: delay)
             guard let self, self.feedOpen else { return }
-            if let next = self.pending.first {
+            if let next = self.queue.first(where: { $0 != self.feedPage }) ?? self.queue.first {
                 withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
                     self.feedPage = next
                 }
