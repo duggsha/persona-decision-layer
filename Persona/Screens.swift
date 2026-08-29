@@ -435,8 +435,8 @@ struct QueueView: View {
             .frame(height: 24)
 
             GeometryReader { geo in
-                let slot = geo.size.height * 0.74
-                let topGap: CGFloat = (geo.size.height - geo.size.height * 0.74) / 2
+                let slot = geo.size.height * 0.82
+                let topGap: CGFloat = (geo.size.height - geo.size.height * 0.82) / 2
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 22) {
                         if day.queue.isEmpty {
@@ -1649,14 +1649,13 @@ struct PayCard: View {
 
     private var askCard: some View {
         QueueCard(kind: "Payment") {
-            VStack(spacing: 18) {
-                CardGraphic()
+            VStack(spacing: 12) {
+                CardGraphic(scale: 0.86)
                 Text("$25.00")
-                    .font(.system(size: 50, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 42, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Ink.primary)
             }
-            .padding(.top, 36)
-            .padding(.bottom, 30)
+            .padding(.vertical, 18)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Carbone holds the 8:00 table with a deposit. Cover it?")
