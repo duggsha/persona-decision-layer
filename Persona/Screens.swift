@@ -46,6 +46,49 @@ struct HomeView: View {
     }
 }
 
+// The tick draws, then the proof: the thread itself.
+struct SentSeal<Thread: View>: View {
+    @ViewBuilder var thread: Thread
+    @State private var drawn = false
+    @State private var showThread = false
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if !showThread {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: 3)
+                        .frame(width: 46, height: 46)
+                    Circle()
+                        .trim(from: 0, to: drawn ? 1 : 0)
+                        .stroke(Color(red: 0.19, green: 0.82, blue: 0.35),
+                                style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 46, height: 46)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.19, green: 0.82, blue: 0.35))
+                        .scaleEffect(drawn ? 1 : 0.4)
+                        .opacity(drawn ? 1 : 0)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 60)
+                .transition(.opacity)
+            } else {
+                thread
+                    .transition(.opacity.combined(with: .offset(y: 8)))
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { drawn = true }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 850_000_000)
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { showThread = true }
+            }
+        }
+    }
+}
+
 // Tonight's paper trail: every action, one place.
 struct HistoryOverlay: View {
     @EnvironmentObject var day: DayEngine
@@ -184,8 +227,20 @@ struct BandOverlay: View {
 struct QueueView: View {
     @EnvironmentObject var day: DayEngine
 
-    private var pageIndex: Int { (day.feedPage ?? .dinner).rawValue }
-    private var atEnd: Bool { pageIndex == Scenario.allCases.count - 1 }
+    private var pageIndex: Int {
+        guard let p = day.feedPage, let i = day.queue.firstIndex(of: p) else { return 0 }
+        return i
+    }
+    private var atEnd: Bool { day.queue.isEmpty || pageIndex == day.queue.count - 1 }
+
+    @ViewBuilder
+    private func cardView(_ s: Scenario) -> some View {
+        switch s {
+        case .dinner: DinnerCard()
+        case .message: MessageCard()
+        case .deposit: PayCard()
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -197,10 +252,10 @@ struct QueueView: View {
                     .foregroundStyle(Ink.primary)
                 Spacer()
                 HStack(spacing: 6) {
-                    Text("\(pageIndex + 1) of \(Scenario.allCases.count)")
+                    Text(day.queue.isEmpty ? "done" : "\(pageIndex + 1) of \(day.queue.count)")
                         .foregroundStyle(Ink.secondary)
                         .contentTransition(.numericText())
-                    Text(atEnd ? "end of queue" : "scroll")
+                    Text(day.queue.isEmpty ? "" : (atEnd ? "end of queue" : "scroll"))
                         .foregroundStyle(Ink.tertiary)
                     if !atEnd {
                         Image(systemName: "chevron.down")
@@ -218,10 +273,15 @@ struct QueueView: View {
                 let slot = geo.size.height * 0.78
                 let topGap: CGFloat = 16
                 ScrollView(.vertical) {
-                    LazyVStack(spacing: 12) {
-                        ForEach(Scenario.allCases) { s in
+                    LazyVStack(spacing: 22) {
+                        if day.queue.isEmpty {
+                            AllDonePage()
+                                .frame(height: slot)
+                                .padding(.horizontal, 12)
+                        }
+                        ForEach(day.queue) { s in
                             Group {
-                                if s == .dinner {
+                                if s == day.queue.first {
                                     VStack(alignment: .leading, spacing: 16) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text("Welcome back, Shaurya")
@@ -236,25 +296,25 @@ struct QueueView: View {
                                                 .animation(.snappy(duration: 0.3), value: day.pending.count)
                                         }
                                         .padding(.horizontal, 2)
-                                        DinnerCard()
+                                        cardView(s)
                                             .frame(maxHeight: .infinity)
                                     }
                                 } else {
-                                    switch s {
-                                    case .message: MessageCard()
-                                    case .deposit: PayCard()
-                                    default: EmptyView()
-                                    }
+                                    cardView(s)
                                 }
                             }
                             .frame(height: slot)
                             .id(s)
                             .padding(.horizontal, 12)
-                            .opacity((day.feedPage ?? .dinner) == s ? 1 : 0.75)
+                            .opacity((day.feedPage ?? day.queue.first ?? .dinner) == s ? 1 : 0.75)
                             .animation(.snappy(duration: 0.3), value: day.feedPage)
+                            .transition(.asymmetric(
+                                insertion: .opacity,
+                                removal: .move(edge: .trailing).combined(with: .opacity)))
                         }
                     }
                     .scrollTargetLayout()
+                    .animation(.spring(response: 0.5, dampingFraction: 0.86), value: day.queue)
                 }
                 .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
                 .scrollPosition(id: $day.feedPage)
@@ -303,6 +363,43 @@ struct QueueView: View {
                     .animation(.spring(response: 0.4, dampingFraction: 0.85), value: atEnd)
                 }
             }
+        }
+    }
+}
+
+struct AllDonePage: View {
+    @EnvironmentObject var day: DayEngine
+    @State private var drawn = false
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 3)
+                    .frame(width: 64, height: 64)
+                Circle()
+                    .trim(from: 0, to: drawn ? 1 : 0)
+                    .stroke(Color(red: 0.19, green: 0.82, blue: 0.35),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 64, height: 64)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.19, green: 0.82, blue: 0.35))
+                    .scaleEffect(drawn ? 1 : 0.4)
+                    .opacity(drawn ? 1 : 0)
+            }
+            Text("All handled tonight.")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+            Text("Go enjoy dinner.")
+                .font(.system(size: 14))
+                .foregroundStyle(Ink.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .glassCard(radius: 14)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { drawn = true }
         }
     }
 }
@@ -705,7 +802,7 @@ struct DinnerCard: View {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Ink.secondary)
-                Text("Won't ask for small moves next time.")
+                Text("Won't ask for reservation moves again.")
                     .font(.system(size: 13))
                     .foregroundStyle(Ink.secondary)
             }
@@ -715,7 +812,7 @@ struct DinnerCard: View {
             Button {
                 day.graduate()
             } label: {
-                Text("Skip asking for small moves")
+                Text("Always allow reservation moves")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .padding(.horizontal, 12)
@@ -814,6 +911,7 @@ struct MessageCard: View {
             if inRun {
                 RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 3) {
                     if day.runSteps.count >= 3 {
+                        SentSeal {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
                                 PhotoAvatar(name: "maya", size: 24)
@@ -840,6 +938,7 @@ struct MessageCard: View {
                                     .font(.system(size: 11.5, weight: .medium))
                                     .foregroundStyle(Ink.tertiary)
                             }
+                        }
                         }
                         .padding(.bottom, 6)
                         .transition(.scale(scale: 0.92).combined(with: .opacity))
@@ -1243,8 +1342,9 @@ struct SideButtonConfirm: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("Persona")
-                        .font(.system(size: 22, weight: .bold))
+                    Text("PERSONA")
+                        .font(.system(size: 19, weight: .bold))
+                        .kerning(1.6)
                         .foregroundStyle(Ink.primary)
                     Spacer()
                     Button {
@@ -1330,23 +1430,22 @@ struct SideButtonGlyph: View {
             let t = tl.date.timeIntervalSinceReferenceDate
             let phase = 0.5 + 0.5 * sin(t * 2.6)
             ZStack {
-                Circle()
-                    .strokeBorder(color, lineWidth: 2.5)
-                    .frame(width: 46, height: 46)
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .strokeBorder(color, lineWidth: 2.2)
-                    .frame(width: 17, height: 26)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(color, lineWidth: 2.6)
+                    .frame(width: 26, height: 40)
                 Capsule()
                     .fill(color)
-                    .frame(width: 2.5, height: 10)
-                    .offset(x: 10.5, y: -3)
+                    .frame(width: 3.5, height: 14)
+                    .offset(x: 15, y: -7)
+                    .shadow(color: color.opacity(0.5 + 0.5 * phase), radius: 5)
+                    .scaleEffect(y: 1 + 0.12 * phase)
                 Image(systemName: "arrow.left")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(color)
-                    .offset(x: 17 + 4 * phase, y: -3)
-                    .opacity(0.35 + 0.65 * (1 - phase))
+                    .offset(x: 28 - 5 * phase, y: -7)
+                    .opacity(0.4 + 0.6 * phase)
             }
-            .frame(width: 52, height: 52)
+            .frame(width: 60, height: 48)
         }
     }
 }

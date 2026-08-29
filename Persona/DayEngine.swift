@@ -135,6 +135,31 @@ final class DayEngine: ObservableObject {
         }
     }
 
+    func isActive(_ s: Scenario) -> Bool {
+        switch s {
+        case .dinner:
+            switch stage {
+            case .lowAsk, .lowDeclined, .lowWorking, .lowDone, .lowUndoing, .lowFailed: return true
+            default: return false
+            }
+        case .message:
+            switch stage {
+            case .msgAsk, .msgDeclined, .msgSent: return true
+            default: return false
+            }
+        case .deposit:
+            switch stage {
+            case .payAsk, .payDeclined, .payDone: return true
+            default: return false
+            }
+        }
+    }
+
+    // Done things leave the queue. The queue is only what needs you.
+    var queue: [Scenario] {
+        Scenario.allCases.filter { !isResolved($0) || isActive($0) }
+    }
+
     var cardUp: Bool { stage != .idle && !feedOpen }
 
     var highStakes: Bool {
