@@ -322,6 +322,7 @@ struct QueueView: View {
                 .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
                 .scrollPosition(id: $day.feedPage)
                 .scrollIndicators(.hidden)
+                .scrollDisabled(day.queue.count <= 1)
                 .contentMargins(.top, topGap, for: .scrollContent)
                 .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
                 .overlay(alignment: .bottom) {
