@@ -414,27 +414,29 @@ struct QueueView: View {
                     .kerning(1.2)
                     .foregroundStyle(Ink.primary)
                 Spacer()
-                HStack(spacing: 6) {
-                    Text(day.queue.isEmpty ? "done" : "\(pageIndex + 1) of \(day.queue.count)")
-                        .foregroundStyle(Ink.secondary)
-                        .contentTransition(.numericText())
-                    Text(day.queue.isEmpty ? "" : (atEnd ? "end of queue" : "scroll"))
-                        .foregroundStyle(Ink.tertiary)
-                    if !atEnd {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Ink.tertiary)
+                Button {
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) { day.judgmentVisible = true }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "brain")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Judgment")
+                            .font(.system(size: 12.5, weight: .medium))
                     }
+                    .foregroundStyle(Ink.secondary)
+                    .padding(.horizontal, 11)
+                    .frame(height: 30)
+                    .background(Color.white.opacity(0.05), in: Capsule())
+                    .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
                 }
-                .font(.system(size: 12))
-                .animation(.snappy(duration: 0.25), value: pageIndex)
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
             .frame(height: 24)
 
             GeometryReader { geo in
-                let slot = geo.size.height * 0.80
-                let topGap: CGFloat = 16
+                let slot = geo.size.height * 0.74
+                let topGap: CGFloat = (geo.size.height - geo.size.height * 0.74) / 2
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 22) {
                         if day.queue.isEmpty {
@@ -500,8 +502,7 @@ struct QueueView: View {
                 .onChange(of: day.feedPage) { _, p in
                     if p == .autoText { day.autoTextSeen() }
                 }
-                .contentMargins(.top, topGap, for: .scrollContent)
-                .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
+                .contentMargins(.vertical, topGap, for: .scrollContent)
             }
         }
     }
@@ -535,7 +536,7 @@ struct AutoTextCard: View {
                 Text("Told Maya you're wrapping up")
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(Ink.primary)
-                Text("Handled alone. You trust plan updates to her, and it wrote it the way you would.")
+                Text("Auto-approved: you okayed a text like this minutes ago and set updates to Maya to always send.")
                     .font(.system(size: 14))
                     .foregroundStyle(Ink.secondary)
                     .lineSpacing(3)
@@ -1749,9 +1750,11 @@ struct CardGraphic: View {
             Spacer()
 
             HStack {
-                Text("\u{2022}\u{2022}\u{2022}\u{2022}  \u{2022}\u{2022}\u{2022}\u{2022}  \u{2022}\u{2022}\u{2022}\u{2022}  4421")
-                    .font(.system(size: 13 * scale, weight: .semibold, design: .monospaced))
-                    .kerning(1.5 * scale)
+                Text("\u{2022}\u{2022}\u{2022}\u{2022} \u{2022}\u{2022}\u{2022}\u{2022} \u{2022}\u{2022}\u{2022}\u{2022} 4421")
+                    .font(.system(size: 11.5 * scale, weight: .semibold, design: .monospaced))
+                    .kerning(0.6 * scale)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .foregroundStyle(Color.white.opacity(0.6))
                 Spacer()
             }
