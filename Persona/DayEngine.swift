@@ -28,6 +28,14 @@ enum AppLogo {
     case persona, calendar, messages, phone, wallet, opentable
 }
 
+struct Judgment: Identifiable, Equatable {
+    let key: String
+    let logo: AppLogo
+    let rule: String
+    let detail: String
+    var id: String { key }
+}
+
 struct RunStep: Identifiable, Equatable {
     let id = UUID()
     let logo: AppLogo
@@ -88,22 +96,27 @@ final class DayEngine: ObservableObject {
     // Everything it learned tonight.
     @Published var judgmentVisible = false
 
-    var judgments: [(String, String)] {
-        var j: [(String, String)] = [
-            ("calendar", "Gym rebookings: automatic since May"),
-            ("phone", "Hold lines: it waits, you don't"),
-            ("creditcard", "Subscriptions: always ask first"),
+    @Published var deletedJudgments: Set<String> = []
+
+    var judgments: [Judgment] {
+        var j: [Judgment] = [
+            Judgment(key: "gym", logo: .calendar, rule: "Gym rebookings", detail: "always allowed \u{00B7} since May"),
+            Judgment(key: "hold", logo: .phone, rule: "Hold lines", detail: "it waits, you don't \u{00B7} since June"),
+            Judgment(key: "subs", logo: .wallet, rule: "Subscriptions", detail: "always ask first \u{00B7} since March"),
         ]
-        if graduated { j.append(("calendar", "Small reservation moves: never ask again")) }
-        if graduatedMsg { j.append(("paperplane.fill", "Plan updates to Maya: send automatically")) }
-        if graduatedPay { j.append(("creditcard", "Holds under $50: pay automatically")) }
-        if let r = lowReasonPicked { j.append(("hand.raised", "Dinner declined: \"\(r)\" rides the next run")) }
-        if let r = highReasonPicked { j.append(("hand.raised", "Message declined: \"\(r)\" noted")) }
-        if let r = payReasonPicked { j.append(("hand.raised", "Payment declined: \"\(r)\" noted")) }
-        if voiceEdited { j.append(("mic.fill", "Texts to Maya: warmer tone preferred")) }
-        if let r = flowersReasonPicked { j.append(("gift", "Flowers for Mom: yours (\"\(r)\")")) }
-        else if flowersNote == "yours" { j.append(("gift", "Flowers for Mom: you handle those")) }
-        return j
+        if graduated { j.append(Judgment(key: "resv", logo: .opentable, rule: "Reservation moves", detail: "always allowed \u{00B7} just now")) }
+        if graduatedMsg { j.append(Judgment(key: "maya", logo: .messages, rule: "Plan updates to Maya", detail: "send automatically \u{00B7} just now")) }
+        if graduatedPay { j.append(Judgment(key: "holds", logo: .wallet, rule: "Holds under $50", detail: "pay automatically \u{00B7} just now")) }
+        if voiceEdited { j.append(Judgment(key: "tone", logo: .messages, rule: "Texts to Maya", detail: "warmer tone \u{00B7} learned from an edit")) }
+        if flowersNote == "yours" { j.append(Judgment(key: "mom", logo: .persona, rule: "Anything for Mom", detail: "\(flowersReasonPicked ?? "you handle it") \u{00B7} just now")) }
+        return j.filter { !deletedJudgments.contains($0.key) }
+    }
+
+    func deleteJudgment(_ key: String) {
+        Haptic.light()
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
+            _ = deletedJudgments.insert(key)
+        }
     }
 
     // The thread behind the message ask.
@@ -113,8 +126,10 @@ final class DayEngine: ObservableObject {
     @Published var autoCardVisible = false
     @Published var autoCardDismissed = false
 
-    // Card 3: already handled, because you trusted this type.
+    // Card 3: it already ran, because a rule said it could. Undo still works.
     @Published var autoTextResolved = false
+    @Published var autoUndone = false
+    @Published var autoUndoing = false
 
     // Card 5: a new kind of ask, built to be declined. It learns.
     @Published var flowersNote: String? = nil
@@ -131,8 +146,9 @@ final class DayEngine: ObservableObject {
         if let m = mayaNote {
             h.append(("paperplane.fill", m == "texted 7:41" ? "Told Maya · 7:41" : "Maya left to you"))
         }
-        if autoTextResolved {
-            h.append(("bolt.fill", "Auto: told Maya you're wrapping up"))
+        if mayaNote != nil && graduatedMsg {
+            h.append((autoUndone ? "arrow.uturn.backward" : "bolt.fill",
+                      autoUndone ? "Auto-booked ride, then cancelled" : "Auto: booked your ride home"))
         }
         if let p = depositNote {
             h.append(("creditcard", p == "held" ? "Paid $25 table hold" : "Deposit skipped"))
@@ -262,8 +278,21 @@ final class DayEngine: ObservableObject {
     }
 
     // The already-handled card: linger, then slide out on its own.
-    func autoTextSeen() {
-        // It stays until you move past it. Nothing important disappears.
+    func autoTextSeen() { }
+
+    // Even a finished action can be walked back: it calls, cancels, corrects.
+    func undoAuto() {
+        Haptic.light()
+        withAnimation(.snappy(duration: 0.3)) { autoUndoing = true }
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            guard let self else { return }
+            Haptic.success()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                self.autoUndoing = false
+                self.autoUndone = true
+            }
+        }
     }
 
     func presentFlowers() {
@@ -306,7 +335,7 @@ final class DayEngine: ObservableObject {
     }
 
     // The queue is mechanical: finish one thing, the next rises.
-    private func advanceSoon(_ delay: UInt64 = 550_000_000) {
+    private func advanceSoon(_ delay: UInt64 = 320_000_000) {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: delay)
             guard let self, self.feedOpen else { return }
@@ -337,16 +366,19 @@ final class DayEngine: ObservableObject {
     func graduate() {
         Haptic.success()
         withAnimation(.snappy(duration: 0.3)) { graduated = true }
+        approveLow()
     }
 
     func graduateMsg() {
         Haptic.success()
         withAnimation(.snappy(duration: 0.3)) { graduatedMsg = true }
+        sendHigh()
     }
 
     func graduatePay() {
         Haptic.success()
         withAnimation(.snappy(duration: 0.3)) { graduatedPay = true }
+        sendPay()
     }
 
     func resetDay() {
@@ -358,6 +390,9 @@ final class DayEngine: ObservableObject {
         autoCardVisible = false
         autoCardDismissed = false
         autoTextResolved = false
+        autoUndone = false
+        autoUndoing = false
+        deletedJudgments = []
         flowersNote = nil
         flowersReasonPicked = nil
         dinnerResolved = nil
@@ -589,7 +624,7 @@ final class DayEngine: ObservableObject {
         ], every: 560_000_000) { [weak self] in
             guard let self else { return }
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_600_000_000)
+                try? await Task.sleep(nanoseconds: 1_900_000_000)
                 withAnimation(.snappy(duration: 0.35)) { self.mayaNote = "texted 7:41" }
                 self.setStage(.idle)
                 // the auto card now sits next in the queue: swipe to it
@@ -647,7 +682,7 @@ final class DayEngine: ObservableObject {
         ], every: 560_000_000) { [weak self] in
             guard let self else { return }
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_400_000_000)
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
                 withAnimation(.snappy(duration: 0.35)) { self.depositNote = "held" }
                 self.setStage(.idle)
                 self.advanceSoon()

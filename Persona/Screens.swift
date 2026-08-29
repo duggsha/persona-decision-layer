@@ -127,28 +127,40 @@ struct JudgmentOverlay: View {
 
                 LedgerDivider()
 
-                ForEach(Array(day.judgments.enumerated()), id: \.offset) { i, item in
+                ForEach(Array(day.judgments.enumerated()), id: \.element.id) { i, item in
                     HStack(spacing: 12) {
-                        Image(systemName: item.0)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Ink.secondary)
-                            .frame(width: 22)
-                        Text(item.1)
-                            .font(.system(size: 14.5))
-                            .foregroundStyle(Ink.primary.opacity(0.92))
-                            .fixedSize(horizontal: false, vertical: true)
+                        AppLogoView(logo: item.logo, size: 22)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.rule)
+                                .font(.system(size: 14.5, weight: .medium))
+                                .foregroundStyle(Ink.primary.opacity(0.94))
+                            Text(item.detail)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Ink.tertiary)
+                        }
                         Spacer()
+                        Button {
+                            day.deleteJudgment(item.key)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Ink.tertiary)
+                                .frame(width: 26, height: 26)
+                                .background(Color.white.opacity(0.06), in: Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 46)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 52)
+                    .transition(.opacity.combined(with: .offset(x: 30)))
                     if i < day.judgments.count - 1 {
-                        LedgerDivider().padding(.leading, 52)
+                        LedgerDivider().padding(.leading, 50)
                     }
                 }
 
                 LedgerDivider()
 
-                Text("Every decision teaches it when to help, when to ask, and when to leave you alone.")
+                Text("Delete a rule and it goes back to asking. Every decision teaches it when to help, when to ask, and when to leave you alone.")
                     .font(.system(size: 12.5))
                     .foregroundStyle(Ink.tertiary)
                     .lineSpacing(3)
@@ -534,10 +546,12 @@ struct AutoTextCard: View {
             LedgerDivider()
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("Told Maya you're wrapping up")
+                Text(day.autoUndone ? "Ride cancelled" : "Booked your ride home")
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(Ink.primary)
-                Text("Auto-approved: you okayed a text like this minutes ago and set updates to Maya to always send.")
+                Text(day.autoUndone
+                     ? "Called it off and told the driver. Nothing charged."
+                     : "It ran on its own: rides after dinner are on your always-allow list. Undo still works.")
                     .font(.system(size: 14))
                     .foregroundStyle(Ink.secondary)
                     .lineSpacing(3)
@@ -549,34 +563,48 @@ struct AutoTextCard: View {
                         Text("Matched")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Ink.primary)
-                        Text("your trust rule for Maya")
+                        Text("rides after dinner")
                             .font(.system(size: 15))
                             .foregroundStyle(Ink.secondary)
-                            .lineLimit(1)
                         Spacer(minLength: 0)
                     }
                     .frame(height: 40)
                     HStack(spacing: 12) {
-                        AppLogoView(logo: .messages, size: 22)
-                        Text("Sent")
+                        AppLogoView(logo: .wallet, size: 22)
+                        Text(day.autoUndone ? "Refunded" : "Booked")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Ink.primary)
-                        Text("\u{201C}wrapping up, otw soon\u{201D}")
+                        Text(day.autoUndone ? "$0 charged" : "9:40pm pickup \u{00B7} $18")
                             .font(.system(size: 15))
                             .foregroundStyle(Ink.secondary)
-                            .lineLimit(1)
                         Spacer(minLength: 0)
                     }
                     .frame(height: 40)
                 }
 
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("logged \u{00B7} swipe on when you\u{2019}re ready")
-                        .font(.system(size: 12.5))
+                if day.autoUndoing {
+                    HStack(spacing: 10) {
+                        WorkingDot()
+                        Text("Cancelling with the driver")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Ink.secondary)
+                        Spacer()
+                    }
+                    .frame(height: 44)
+                } else if day.autoUndone {
+                    HStack(spacing: 7) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("undone \u{00B7} it fixed what it had already done")
+                            .font(.system(size: 12.5))
+                    }
+                    .foregroundStyle(Ink.tertiary)
+                    .frame(height: 44)
+                } else {
+                    Button("Undo this") { day.undoAuto() }
+                        .buttonStyle(DarkButton())
+                        .frame(maxWidth: 160)
                 }
-                .foregroundStyle(Ink.tertiary)
             }
             .padding(16)
         }
@@ -588,6 +616,7 @@ struct AutoTextCard: View {
 // Card 5: a new kind of ask. Declining teaches it whose job this is.
 struct FlowersCard: View {
     @EnvironmentObject var day: DayEngine
+    @State private var ruleOpen = false
 
     var body: some View {
         QueueCard(kind: "Errand") {
@@ -653,11 +682,14 @@ struct FlowersCard: View {
                 }
                 .frame(height: 48)
             } else {
-                HStack(spacing: 10) {
+                HStack(alignment: .bottom, spacing: 10) {
                     Button("I'll handle it") { day.declineFlowers() }
                         .buttonStyle(DarkButton())
-                    Button("Send them") { day.approveFlowers() }
-                        .buttonStyle(DarkButton(prominent: true))
+                    SplitAction(title: "Send them",
+                                ruleTitle: "Always send Mom flowers on birthdays",
+                                action: { day.approveFlowers() },
+                                ruleAction: { day.approveFlowers() },
+                                open: $ruleOpen)
                 }
             }
         }
@@ -1071,15 +1103,43 @@ struct HowItGotHere: View {
     }
 }
 
-// Primary action with a rule attached: approve now, or teach it forever.
-struct SplitAction<Menu: View>: View {
+// One approve button with a rule tucked under it. The rule approves too:
+// saying "always" is a stronger yes, not a different one.
+struct SplitAction: View {
     let title: String
+    let ruleTitle: String
     let action: () -> Void
+    let ruleAction: () -> Void
     @Binding var open: Bool
-    @ViewBuilder var menu: Menu
 
     var body: some View {
         VStack(spacing: 8) {
+            if open {
+                Button {
+                    ruleAction()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "infinity")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(ruleTitle)
+                            .font(.system(size: 14, weight: .medium))
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(Ink.primary.opacity(0.9))
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity.combined(with: .offset(y: 8)))
+            }
+
             HStack(spacing: 1) {
                 Button(action: action) {
                     Text(title)
@@ -1097,7 +1157,7 @@ struct SplitAction<Menu: View>: View {
                 Button {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { open.toggle() }
                 } label: {
-                    Image(systemName: "chevron.down")
+                    Image(systemName: "chevron.up")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Ink.secondary)
                         .rotationEffect(.degrees(open ? 180 : 0))
@@ -1109,11 +1169,6 @@ struct SplitAction<Menu: View>: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.32), lineWidth: 1)
-            }
-
-            if open {
-                menu
-                    .transition(.opacity.combined(with: .offset(y: -6)))
             }
         }
     }
@@ -1173,7 +1228,7 @@ struct DinnerCard: View {
                         removal: .move(edge: .trailing).combined(with: .opacity)))
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
+        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: inRun)
     }
 
     private var askCard: some View {
@@ -1353,9 +1408,11 @@ struct DinnerCard: View {
                 HStack(alignment: .top, spacing: 10) {
                     Button("Keep 7:30") { day.declineLow() }
                         .buttonStyle(DarkButton())
-                    SplitAction(title: "Move it", action: { day.approveLow() }, open: $ruleOpen) {
-                        graduationRow
-                    }
+                    SplitAction(title: "Move it",
+                                ruleTitle: "Always allow reservation moves",
+                                action: { day.approveLow() },
+                                ruleAction: { day.graduate() },
+                                open: $ruleOpen)
                 }
             }
         }
@@ -1455,7 +1512,7 @@ struct MessageCard: View {
                         removal: .move(edge: .trailing).combined(with: .opacity)))
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
+        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: inRun)
     }
 
     private var askCard: some View {
@@ -1612,6 +1669,30 @@ struct MessageCard: View {
                 .frame(height: 48)
             } else if !day.editingHigh {
                 VStack(spacing: 8) {
+                    if ruleOpen {
+                        Button {
+                            day.graduateMsg()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "infinity")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Always send plan updates to Maya")
+                                    .font(.system(size: 14, weight: .medium))
+                                Spacer(minLength: 0)
+                            }
+                            .foregroundStyle(Ink.primary.opacity(0.9))
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.opacity.combined(with: .offset(y: 8)))
+                    }
                     HStack(spacing: 10) {
                         Button("Don't send") { day.declineHigh() }
                             .buttonStyle(DarkButton())
@@ -1620,7 +1701,7 @@ struct MessageCard: View {
                             Button {
                                 withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { ruleOpen.toggle() }
                             } label: {
-                                Image(systemName: "chevron.down")
+                                Image(systemName: "chevron.up")
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(Ink.secondary)
                                     .rotationEffect(.degrees(ruleOpen ? 180 : 0))
@@ -1634,7 +1715,6 @@ struct MessageCard: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    if ruleOpen { graduationRowMsg.transition(.opacity.combined(with: .offset(y: -6))) }
                 }
             }
         }
@@ -1687,7 +1767,7 @@ struct PayCard: View {
                         removal: .move(edge: .trailing).combined(with: .opacity)))
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
+        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: inRun)
     }
 
     @ViewBuilder
@@ -1781,9 +1861,11 @@ struct PayCard: View {
                 HStack(alignment: .top, spacing: 10) {
                     Button("Not now") { day.declinePay() }
                         .buttonStyle(DarkButton())
-                    SplitAction(title: "Pay $25", action: { day.payTapped() }, open: $ruleOpen) {
-                        graduationRowPay
-                    }
+                    SplitAction(title: "Pay $25",
+                                ruleTitle: "Always pay holds under $50",
+                                action: { day.payTapped() },
+                                ruleAction: { day.graduatePay() },
+                                open: $ruleOpen)
                 }
             }
         }
