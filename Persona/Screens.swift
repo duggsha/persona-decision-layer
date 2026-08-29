@@ -284,9 +284,11 @@ struct QueueView: View {
                                 if s == day.queue.first {
                                     VStack(alignment: .leading, spacing: 16) {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text("Welcome back, Shaurya")
-                                                .font(.system(size: 22, weight: .light))
-                                                .foregroundStyle(Ink.primary)
+                                            if s == .dinner {
+                                                Text("Welcome back, Shaurya")
+                                                    .font(.system(size: 22, weight: .light))
+                                                    .foregroundStyle(Ink.primary)
+                                            }
                                             Text(day.pending.isEmpty
                                                  ? "Nothing needs you tonight."
                                                  : "\(day.pending.count) thing\(day.pending.count == 1 ? " needs" : "s need") your okay tonight.")
@@ -301,6 +303,7 @@ struct QueueView: View {
                                     }
                                 } else {
                                     cardView(s)
+                                        .frame(maxHeight: .infinity)
                                 }
                             }
                             .frame(height: slot)
@@ -1106,7 +1109,7 @@ struct MessageCard: View {
                 HStack(spacing: 10) {
                     Button("Don't send") { day.declineHigh() }
                         .buttonStyle(DarkButton())
-                    HoldToSend { day.sendHigh() }
+                    HoldToSend(label: "Hold to Send") { day.sendHigh() }
                 }
             }
         }

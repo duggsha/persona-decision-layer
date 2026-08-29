@@ -114,7 +114,7 @@ struct HoldToSend: View {
     @State private var pressing = false
     @State private var progress: CGFloat = 0
     @State private var hinting = false
-    private let holdTime: Double = 0.8
+    private let holdTime: Double = 0.6
 
     var body: some View {
         Text(hinting ? "Hold to send" : label)
