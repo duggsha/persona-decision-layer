@@ -84,8 +84,18 @@ final class DayEngine: ObservableObject {
     // Tonight's paper trail.
     @Published var historyVisible = false
 
+    // The thread behind the message ask.
+    @Published var threadVisible = false
+
+    // The payoff of trust: one thing handled without asking.
+    @Published var autoCardVisible = false
+    @Published var autoCardDismissed = false
+
     var history: [(String, String)] {
         var h: [(String, String)] = []
+        if autoCardDismissed {
+            h.append(("bolt.fill", "Auto: told Maya you're on the way"))
+        }
         if let d = dinnerResolved {
             h.append(("calendar", d == "moved" ? "Dinner moved to \(dinnerTime) at Carbone" : "Dinner kept at 7:30"))
         }
@@ -213,6 +223,22 @@ final class DayEngine: ObservableObject {
         }
     }
 
+    // Once the queue is clear and trust exists, show one thing it did alone.
+    func maybeAutoDemo() {
+        guard graduatedMsg, !autoCardDismissed, queue.isEmpty else { return }
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard let self, !self.autoCardDismissed else { return }
+            Haptic.soft()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { self.autoCardVisible = true }
+            try? await Task.sleep(nanoseconds: 6_500_000_000)
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                self.autoCardVisible = false
+                self.autoCardDismissed = true
+            }
+        }
+    }
+
     func graduate() {
         Haptic.success()
         withAnimation(.snappy(duration: 0.3)) { graduated = true }
@@ -234,6 +260,8 @@ final class DayEngine: ObservableObject {
         graduated = false
         graduatedMsg = false
         graduatedPay = false
+        autoCardVisible = false
+        autoCardDismissed = false
         dinnerResolved = nil
         mayaNote = nil
         depositNote = nil

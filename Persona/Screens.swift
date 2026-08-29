@@ -37,6 +37,11 @@ struct HomeView: View {
                     .transition(.opacity)
             }
 
+            if day.threadVisible {
+                ThreadOverlay()
+                    .transition(.opacity)
+            }
+
             if day.hudVisible {
                 DemoHUD()
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -85,6 +90,88 @@ struct SentSeal<Thread: View>: View {
                 try? await Task.sleep(nanoseconds: 850_000_000)
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { showThread = true }
             }
+        }
+    }
+}
+
+// The messages that led here. Context without leaving the card.
+struct ThreadOverlay: View {
+    @EnvironmentObject var day: DayEngine
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.snappy(duration: 0.25)) { day.threadVisible = false }
+                }
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 10) {
+                    PhotoAvatar(name: "maya", size: 28)
+                    Text("Maya")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
+                    HStack(spacing: 4) {
+                        AppLogoView(logo: .messages, size: 13)
+                        Text("iMessage")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Ink.tertiary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 50)
+
+                LedgerDivider()
+
+                VStack(spacing: 10) {
+                    bubble("we still on for 7:30?", mine: false, time: "6:58")
+                    bubble("yep! just wrapping this review", mine: true, time: "7:02")
+                    bubble("kk leaving soonish", mine: false, time: "7:11")
+                    HStack(spacing: 8) {
+                        Rectangle().fill(Ink.hairline).frame(height: 1)
+                        Text("PERSONA WILL SEND")
+                            .font(.system(size: 10, weight: .medium))
+                            .kerning(1.2)
+                            .foregroundStyle(Ink.tertiary)
+                            .fixedSize()
+                        Rectangle().fill(Ink.hairline).frame(height: 1)
+                    }
+                    .padding(.vertical, 2)
+                    bubble(day.draft, mine: true, time: "now", pending: true)
+                }
+                .padding(16)
+            }
+            .background(Ink.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Ink.hairline, lineWidth: 1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 40)
+        }
+    }
+
+    private func bubble(_ text: String, mine: Bool, time: String, pending: Bool = false) -> some View {
+        HStack {
+            if mine { Spacer(minLength: 44) }
+            VStack(alignment: mine ? .trailing : .leading, spacing: 3) {
+                Text(text)
+                    .font(.system(size: 15))
+                    .foregroundStyle(mine ? .white : Ink.primary.opacity(0.92))
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 9)
+                    .background(
+                        mine ? (pending ? Color(red: 0.04, green: 0.52, blue: 1.0).opacity(0.55)
+                                        : Color(red: 0.04, green: 0.52, blue: 1.0))
+                             : Color.white.opacity(0.10),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                Text(time)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Ink.tertiary)
+            }
+            if !mine { Spacer(minLength: 44) }
         }
     }
 }
@@ -275,9 +362,20 @@ struct QueueView: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 22) {
                         if day.queue.isEmpty {
-                            AllDonePage()
-                                .frame(height: slot)
-                                .padding(.horizontal, 12)
+                            Group {
+                                if day.autoCardVisible {
+                                    AutoTrustCard()
+                                        .transition(.asymmetric(
+                                            insertion: .offset(y: 26).combined(with: .opacity),
+                                            removal: .move(edge: .trailing).combined(with: .opacity)))
+                                } else {
+                                    AllDonePage()
+                                }
+                            }
+                            .frame(height: slot, alignment: .top)
+                            .padding(.horizontal, 12)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.86), value: day.autoCardVisible)
+                            .onAppear { day.maybeAutoDemo() }
                         }
                         ForEach(day.queue) { s in
                             Group {
@@ -369,6 +467,67 @@ struct QueueView: View {
                 }
             }
         }
+    }
+}
+
+// Trust, paying off: something handled with no ask at all.
+struct AutoTrustCard: View {
+    @EnvironmentObject var day: DayEngine
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Text("Automatic")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+                Spacer()
+                HStack(spacing: 5) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("no ask needed")
+                        .font(.system(size: 11.5))
+                }
+                .foregroundStyle(Ink.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 42)
+
+            LedgerDivider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Told Maya you're on the way")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                Text("Handled it alone, because you trusted plan updates to her. Same tone you use.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Ink.secondary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array([
+                        (AppLogo.messages, "Sent", "leaving now, see you at 8"),
+                        (AppLogo.persona, "Logged", "in Past actions"),
+                    ].enumerated()), id: \.offset) { _, s in
+                        HStack(spacing: 12) {
+                            AppLogoView(logo: s.0, size: 22)
+                            Text(s.1)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Ink.primary)
+                            Text(s.2)
+                                .font(.system(size: 15))
+                                .foregroundStyle(Ink.secondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(height: 40)
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 14)
     }
 }
 
@@ -1081,6 +1240,15 @@ struct MessageCard: View {
                             .font(.system(size: 12))
                             .foregroundStyle(Ink.tertiary)
                             .padding(.leading, 4)
+                        Button {
+                            withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) { day.threadVisible = true }
+                        } label: {
+                            Text("See thread")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Ink.secondary)
+                                .underline()
+                        }
+                        .buttonStyle(.plain)
                         Spacer()
                         Button {
                             day.voiceStart()
