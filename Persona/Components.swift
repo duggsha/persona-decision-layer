@@ -109,14 +109,15 @@ struct AutoArc: View {
 // Irreversible needs its own motor action. Press and hold, ring fills,
 // let go early and it springs back. Never the same gesture as dismiss.
 struct HoldToSend: View {
-    var label: String = "Hold to Send"
+    var label: String = "Send"
     var onComplete: () -> Void
     @State private var pressing = false
     @State private var progress: CGFloat = 0
+    @State private var hinting = false
     private let holdTime: Double = 0.8
 
     var body: some View {
-        Text(label)
+        Text(hinting ? "Hold to send" : label)
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(Ink.primary)
             .frame(maxWidth: .infinity)
@@ -144,7 +145,15 @@ struct HoldToSend: View {
                     withAnimation(.linear(duration: holdTime)) { progress = 1 }
                 } else if progress < 1 {
                     Haptic.light()
+                    let wasQuickTap = progress < 0.35
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { progress = 0 }
+                    if wasQuickTap {
+                        withAnimation(.snappy(duration: 0.2)) { hinting = true }
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 1_200_000_000)
+                            withAnimation(.snappy(duration: 0.25)) { hinting = false }
+                        }
+                    }
                 }
             }
     }

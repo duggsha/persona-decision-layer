@@ -47,11 +47,11 @@ struct QueueView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 9) {
-                BrandOrb(size: 27)
+            HStack(spacing: 8) {
+                BrandOrb(size: 22)
                 Text("PERSONA")
-                    .font(.system(size: 15, weight: .semibold))
-                    .kerning(1.5)
+                    .font(.system(size: 14, weight: .semibold))
+                    .kerning(1.4)
                     .foregroundStyle(Ink.primary)
                 Spacer()
                 HStack(spacing: 6) {
@@ -70,10 +70,10 @@ struct QueueView: View {
                 .animation(.snappy(duration: 0.25), value: pageIndex)
             }
             .padding(.horizontal, 18)
-            .frame(height: 44)
+            .frame(height: 32)
 
             GeometryReader { geo in
-                let slot = geo.size.height * 0.88
+                let slot = geo.size.height * 0.70
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 12) {
                         ForEach(Scenario.allCases) { s in
@@ -91,10 +91,50 @@ struct QueueView: View {
                     }
                     .scrollTargetLayout()
                 }
-                .scrollTargetBehavior(.viewAligned)
+                .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
                 .scrollPosition(id: $day.feedPage)
                 .scrollIndicators(.hidden)
                 .contentMargins(.vertical, (geo.size.height - slot) / 2, for: .scrollContent)
+                .overlay(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Welcome back, Shaurya")
+                            .font(.system(size: 21, weight: .semibold))
+                            .foregroundStyle(Ink.primary)
+                        Text(day.pending.isEmpty
+                             ? "Nothing needs you."
+                             : "\(day.pending.count) thing\(day.pending.count == 1 ? "" : "s") want your okay.")
+                            .font(.system(size: 13.5))
+                            .foregroundStyle(Ink.secondary)
+                            .contentTransition(.numericText())
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 14)
+                    .opacity(pageIndex == 0 ? 1 : 0)
+                    .offset(y: pageIndex == 0 ? 0 : -12)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: pageIndex)
+                    .animation(.snappy(duration: 0.3), value: day.pending.count)
+                    .allowsHitTesting(false)
+                }
+                .overlay(alignment: .bottom) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color(red: 0.19, green: 0.82, blue: 0.35))
+                        Text(day.pending.isEmpty ? "All handled. Go enjoy dinner." : "Last one tonight.")
+                            .font(.system(size: 13.5, weight: .medium))
+                            .foregroundStyle(Ink.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(height: 36)
+                    .background(Ink.surface, in: Capsule())
+                    .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+                    .padding(.bottom, 12)
+                    .opacity(atEnd ? 1 : 0)
+                    .offset(y: atEnd ? 0 : 10)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: atEnd)
+                    .allowsHitTesting(false)
+                }
             }
         }
     }
@@ -301,6 +341,7 @@ struct RunSurface<Terminal: View>: View {
 // "How it got here" — the reasoning, in the apps it came from.
 struct HowItGotHere: View {
     let rows: [(AppLogo, String)]
+    var initiallyOpen = false
     @State private var open = false
 
     var body: some View {
@@ -322,6 +363,7 @@ struct HowItGotHere: View {
                 .frame(height: 40)
             }
             .buttonStyle(.plain)
+            .onAppear { if initiallyOpen { open = true } }
 
             if open {
                 VStack(alignment: .leading, spacing: 10) {
@@ -403,14 +445,14 @@ struct DinnerCard: View {
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 16) {
                         Text("7:30")
-                            .font(.system(size: 36, weight: .medium, design: .monospaced))
+                            .font(.system(size: 30, weight: .medium, design: .monospaced))
                             .foregroundStyle(Ink.tertiary)
                             .strikethrough(day.dinnerResolved != "kept", color: Ink.tertiary.opacity(0.7))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Ink.secondary)
                         Text(day.dinnerTime)
-                            .font(.system(size: 66, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 54, weight: .semibold, design: .monospaced))
                             .foregroundStyle(Ink.primary)
                             .contentTransition(.numericText())
                             .overlay(alignment: .bottom) {
@@ -434,20 +476,20 @@ struct DinnerCard: View {
                     .transition(.opacity)
                 }
             }
-            .padding(.vertical, 44)
+            .padding(.vertical, 24)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Your 5:30 with Sana is running 25 over. You won't make 7:30.")
-                    .font(.system(size: 19, weight: .semibold))
+                Text("Your 6:30 with Sana is running 25 over. You won't make 7:30.")
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
 
                 HowItGotHere(rows: [
-                    (.calendar, "The 5:30 review started late and is still going."),
+                    (.calendar, "The 6:30 review started late and is still going."),
                     (.opentable, "Carbone shows an open two-top at 8:00."),
                     (.persona, "Reversible, so it proceeds unless stopped."),
-                ])
+                ], initiallyOpen: true)
 
                 Spacer(minLength: 6)
 
@@ -672,7 +714,7 @@ struct MessageCard: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .padding(.vertical, 13)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 Text("She heads out around 7:15. Tell her the new time?")
@@ -756,16 +798,16 @@ struct PayCard: View {
 
     private var askCard: some View {
         QueueCard(kind: "Payment") {
-            VStack(spacing: 20) {
+            VStack(spacing: 14) {
                 CardGraphic()
-                VStack(spacing: 7) {
+                VStack(spacing: 6) {
                     Text("$25.00")
-                        .font(.system(size: 54, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 44, weight: .semibold, design: .monospaced))
                         .foregroundStyle(Ink.primary)
                     MicroLabel(text: "Carbone · table hold · refundable to 6")
                 }
             }
-            .padding(.vertical, 36)
+            .padding(.vertical, 20)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Carbone holds the 8:00 table with a deposit. Cover it?")
@@ -905,7 +947,7 @@ struct VoiceOverlay: View {
                 VStack(spacing: 8) {
                     if let heard = day.voiceHeard {
                         Text(heard)
-                            .font(.system(size: 19, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Ink.primary)
                             .transition(.opacity.combined(with: .offset(y: 6)))
                     }
