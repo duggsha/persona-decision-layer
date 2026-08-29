@@ -32,12 +32,76 @@ struct HomeView: View {
                     .transition(.opacity)
             }
 
+            if day.historyVisible {
+                HistoryOverlay()
+                    .transition(.opacity)
+            }
+
             if day.hudVisible {
                 DemoHUD()
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.88), value: day.hudVisible)
+    }
+}
+
+// Tonight's paper trail: every action, one place.
+struct HistoryOverlay: View {
+    @EnvironmentObject var day: DayEngine
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.snappy(duration: 0.25)) { day.historyVisible = false }
+                }
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Tonight")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
+                    Spacer()
+                    Text("7:42 PM")
+                        .font(.clock())
+                        .foregroundStyle(Ink.tertiary)
+                }
+                .padding(.horizontal, 18)
+                .frame(height: 48)
+
+                LedgerDivider()
+
+                ForEach(Array(day.history.enumerated()), id: \.offset) { i, item in
+                    HStack(spacing: 12) {
+                        Image(systemName: item.0)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Ink.secondary)
+                            .frame(width: 22)
+                        Text(item.1)
+                            .font(.system(size: 14.5))
+                            .foregroundStyle(Ink.primary.opacity(0.92))
+                        Spacer()
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Ink.tertiary)
+                    }
+                    .padding(.horizontal, 18)
+                    .frame(height: 46)
+                    if i < day.history.count - 1 {
+                        LedgerDivider().padding(.leading, 52)
+                    }
+                }
+            }
+            .background(Ink.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Ink.hairline, lineWidth: 1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 54)
+        }
     }
 }
 
@@ -164,8 +228,8 @@ struct QueueView: View {
                                                 .font(.system(size: 22, weight: .light))
                                                 .foregroundStyle(Ink.primary)
                                             Text(day.pending.isEmpty
-                                                 ? "Nothing needs you."
-                                                 : "\(day.pending.count) thing\(day.pending.count == 1 ? "" : "s") want your okay tonight.")
+                                                 ? "Nothing needs you tonight."
+                                                 : "\(day.pending.count) thing\(day.pending.count == 1 ? " needs" : "s need") your okay tonight.")
                                                 .font(.system(size: 22, weight: .light))
                                                 .foregroundStyle(Ink.primary)
                                                 .contentTransition(.numericText())
@@ -199,22 +263,44 @@ struct QueueView: View {
                 .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
                 .overlay(alignment: .bottom) {
                     HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 15))
-                            .foregroundStyle(Color(red: 0.19, green: 0.82, blue: 0.35))
-                        Text(day.pending.isEmpty ? "All handled. Go enjoy dinner." : "Last one tonight.")
-                            .font(.system(size: 13.5, weight: .medium))
-                            .foregroundStyle(Ink.secondary)
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color(red: 0.19, green: 0.82, blue: 0.35))
+                            Text(day.pending.isEmpty ? "All handled tonight." : "Last one tonight.")
+                                .font(.system(size: 13.5, weight: .medium))
+                                .foregroundStyle(Ink.secondary)
+                        }
+                        .padding(.horizontal, 15)
+                        .frame(height: 36)
+                        .background(Ink.surface, in: Capsule())
+                        .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+
+                        if !day.history.isEmpty {
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                    day.historyVisible.toggle()
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .font(.system(size: 12, weight: .medium))
+                                    Text("Past actions")
+                                        .font(.system(size: 13.5, weight: .medium))
+                                }
+                                .foregroundStyle(Ink.secondary)
+                                .padding(.horizontal, 14)
+                                .frame(height: 36)
+                                .background(Ink.surface, in: Capsule())
+                                .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .padding(.horizontal, 16)
-                    .frame(height: 36)
-                    .background(Ink.surface, in: Capsule())
-                    .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
                     .padding(.bottom, 2)
                     .opacity(atEnd ? 1 : 0)
                     .offset(y: atEnd ? 0 : 10)
                     .animation(.spring(response: 0.4, dampingFraction: 0.85), value: atEnd)
-                    .allowsHitTesting(false)
                 }
             }
         }
@@ -509,7 +595,7 @@ struct DinnerCard: View {
                 }
                 .transition(.asymmetric(
                     insertion: .offset(y: 18).combined(with: .opacity),
-                    removal: .opacity))
+                    removal: .move(edge: .trailing).combined(with: .opacity)))
             } else {
                 askCard
                     .transition(.asymmetric(
@@ -728,27 +814,42 @@ struct MessageCard: View {
             if inRun {
                 RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 3) {
                     if day.runSteps.count >= 3 {
-                        HStack(spacing: 10) {
-                            Image(systemName: "paperplane.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Ink.primary)
-                            Text("Sent to Maya")
-                                .font(.system(size: 16.5, weight: .semibold))
-                                .foregroundStyle(Ink.primary)
-                            Spacer()
-                            Text("7:41")
-                                .font(.clock())
-                                .foregroundStyle(Ink.tertiary)
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                PhotoAvatar(name: "maya", size: 24)
+                                Text("Maya")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Ink.secondary)
+                                Spacer()
+                            }
+                            HStack {
+                                Spacer(minLength: 40)
+                                Text(day.draft)
+                                    .font(.system(size: 15.5))
+                                    .foregroundStyle(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .lineSpacing(2)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(Color(red: 0.04, green: 0.52, blue: 1.0),
+                                                in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                            }
+                            HStack {
+                                Spacer()
+                                Text("Delivered")
+                                    .font(.system(size: 11.5, weight: .medium))
+                                    .foregroundStyle(Ink.tertiary)
+                            }
                         }
-                        .frame(height: 46)
-                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                        .padding(.bottom, 6)
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
                     } else {
                         HStack { Spacer() }.frame(height: 6)
                     }
                 }
                 .transition(.asymmetric(
                     insertion: .offset(y: 18).combined(with: .opacity),
-                    removal: .opacity))
+                    removal: .move(edge: .trailing).combined(with: .opacity)))
             } else {
                 askCard
                     .transition(.asymmetric(
@@ -945,7 +1046,7 @@ struct PayCard: View {
                 }
                 .transition(.asymmetric(
                     insertion: .offset(y: 18).combined(with: .opacity),
-                    removal: .opacity))
+                    removal: .move(edge: .trailing).combined(with: .opacity)))
             } else {
                 askCard
                     .transition(.asymmetric(
@@ -958,14 +1059,14 @@ struct PayCard: View {
 
     private var askCard: some View {
         QueueCard(kind: "Payment") {
-            VStack(spacing: 16) {
+            VStack(spacing: 18) {
                 CardGraphic()
                 Text("$25.00")
-                    .font(.system(size: 46, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 50, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Ink.primary)
             }
-            .padding(.top, 30)
-            .padding(.bottom, 24)
+            .padding(.top, 36)
+            .padding(.bottom, 30)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Carbone holds the 8:00 table with a deposit. Cover it?")
@@ -1028,42 +1129,43 @@ struct PayCard: View {
 
 // A drawn card. Monochrome, chip and all.
 struct CardGraphic: View {
+    var scale: CGFloat = 1.0
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
+            RoundedRectangle(cornerRadius: 4 * scale, style: .continuous)
                 .fill(
                     LinearGradient(colors: [Color(white: 0.34), Color(white: 0.22)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 26, height: 19)
+                .frame(width: 33 * scale, height: 24 * scale)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    RoundedRectangle(cornerRadius: 4 * scale, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
                 }
-                .padding(.top, 13)
-                .padding(.leading, 13)
+                .padding(.top, 16 * scale)
+                .padding(.leading, 16 * scale)
 
             Spacer()
 
             HStack {
                 Text("AMEX")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .kerning(1.2)
+                    .font(.system(size: 11 * scale, weight: .semibold, design: .monospaced))
+                    .kerning(1.2 * scale)
                     .foregroundStyle(Ink.secondary)
                 Spacer()
                 Text("···· 4")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.system(size: 13 * scale, weight: .medium, design: .monospaced))
                     .foregroundStyle(Ink.secondary)
             }
-            .padding(.horizontal, 13)
-            .padding(.bottom, 11)
+            .padding(.horizontal, 16 * scale)
+            .padding(.bottom, 13 * scale)
         }
-        .frame(width: 140, height: 88)
+        .frame(width: 176 * scale, height: 110 * scale)
         .background(
             LinearGradient(colors: [Color(white: 0.13), Color(white: 0.075)],
                            startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            in: RoundedRectangle(cornerRadius: 11 * scale, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            RoundedRectangle(cornerRadius: 11 * scale, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
         }
     }
@@ -1125,7 +1227,7 @@ struct VoiceOverlay: View {
     }
 }
 
-// MARK: - The OS ritual for money. The App Store double-click, in Apple's blue.
+// MARK: - The OS ritual for money: the App Store sheet, faithfully.
 
 struct SideButtonConfirm: View {
     @EnvironmentObject var day: DayEngine
@@ -1133,61 +1235,118 @@ struct SideButtonConfirm: View {
     private let appleBlue = Color(red: 0.04, green: 0.52, blue: 1.0)
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.opacity(0.45)
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.5)
                 .ignoresSafeArea()
                 .onTapGesture(count: 2) { day.sendPay() }
                 .onTapGesture { day.cancelPayConfirm() }
 
-            HStack(spacing: 9) {
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("Double-Click to Pay")
-                        .font(.system(size: 16, weight: .semibold))
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Persona")
+                        .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(Ink.primary)
-                    Text("$25.00 · Amex ··· 4")
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(Ink.secondary)
-                }
-                .padding(.vertical, 13)
-                .padding(.horizontal, 15)
-                .background(Ink.surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(Ink.hairline, lineWidth: 1)
-                }
-
-                TimelineView(.animation) { tl in
-                    let t = tl.date.timeIntervalSinceReferenceDate
-                    let phase = (t.truncatingRemainder(dividingBy: 1.1)) / 1.1
-                    HStack(spacing: 1) {
-                        Image(systemName: "chevron.right")
+                    Spacer()
+                    Button {
+                        day.cancelPayConfirm()
+                    } label: {
+                        Image(systemName: "xmark")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(appleBlue)
-                            .opacity(phase < 0.5 ? 0.35 : 1)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(appleBlue)
-                            .opacity(phase < 0.5 ? 1 : 0.35)
+                            .foregroundStyle(Ink.secondary)
+                            .frame(width: 30, height: 30)
+                            .background(Color.white.opacity(0.09), in: Circle())
                     }
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 14)
 
-                TimelineView(.animation) { tl in
-                    let t = tl.date.timeIntervalSinceReferenceDate
-                    RoundedRectangle(cornerRadius: 2.5)
-                        .fill(appleBlue)
-                        .frame(width: 5, height: 68)
-                        .scaleEffect(y: 1 + 0.05 * sin(t * 3.4))
-                        .shadow(color: appleBlue.opacity(0.6), radius: 8)
+                HStack(spacing: 13) {
+                    CardGraphic(scale: 0.6)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Carbone table hold")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Ink.primary)
+                        Text("OpenTable · via Persona")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Ink.secondary)
+                        Text("Refundable until 6:00 PM")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Ink.secondary)
+                    }
+                    Spacer()
+                    Text("$25.00")
+                        .font(.system(size: 17, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Ink.primary)
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 14)
+
+                Text("Account: duggalshaurya1234@gmail.com")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Ink.secondary)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 14)
+
+                VStack(spacing: 10) {
+                    SideButtonGlyph(color: appleBlue)
+                    Text("Confirm with Side Button")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Ink.primary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 26)
+                .padding(.bottom, 22)
             }
-            .padding(.top, 148)
-            .contentShape(Rectangle())
-            .onTapGesture(count: 2) { day.sendPay() }
-            .offset(x: appeared ? 0 : 26)
+            .background(
+                Color(red: 0.11, green: 0.11, blue: 0.115),
+                in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 10)
+            .offset(y: appeared ? 0 : 80)
             .opacity(appeared ? 1 : 0)
             .onAppear {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) { appeared = true }
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { appeared = true }
             }
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { day.sendPay() }
+        }
+    }
+}
+
+// The blue phone-with-side-button mark, pulsing toward the hardware.
+struct SideButtonGlyph: View {
+    let color: Color
+    var body: some View {
+        TimelineView(.animation) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            let phase = 0.5 + 0.5 * sin(t * 2.6)
+            ZStack {
+                Circle()
+                    .strokeBorder(color, lineWidth: 2.5)
+                    .frame(width: 46, height: 46)
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .strokeBorder(color, lineWidth: 2.2)
+                    .frame(width: 17, height: 26)
+                Capsule()
+                    .fill(color)
+                    .frame(width: 2.5, height: 10)
+                    .offset(x: 10.5, y: -3)
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(color)
+                    .offset(x: 17 + 4 * phase, y: -3)
+                    .opacity(0.35 + 0.65 * (1 - phase))
+            }
+            .frame(width: 52, height: 52)
         }
     }
 }

@@ -79,6 +79,23 @@ final class DayEngine: ObservableObject {
     // The same moment, on the band.
     @Published var bandVisible = false
 
+    // Tonight's paper trail.
+    @Published var historyVisible = false
+
+    var history: [(String, String)] {
+        var h: [(String, String)] = []
+        if let d = dinnerResolved {
+            h.append(("calendar", d == "moved" ? "Dinner moved to \(dinnerTime) at Carbone" : "Dinner kept at 7:30"))
+        }
+        if let m = mayaNote {
+            h.append(("paperplane.fill", m == "texted 7:41" ? "Told Maya · 7:41" : "Maya left to you"))
+        }
+        if let p = depositNote {
+            h.append(("creditcard", p == "held" ? "Paid $25 table hold" : "Deposit skipped"))
+        }
+        return h
+    }
+
     // Demo control
     @Published var failNextBooking = false
     @Published var hudVisible = false
