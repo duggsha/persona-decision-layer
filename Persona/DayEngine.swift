@@ -84,6 +84,22 @@ final class DayEngine: ObservableObject {
     // Tonight's paper trail.
     @Published var historyVisible = false
 
+    // Everything it learned tonight.
+    @Published var judgmentVisible = false
+
+    var judgments: [(String, String)] {
+        var j: [(String, String)] = []
+        if graduated { j.append(("calendar", "Small reservation moves: never ask again")) }
+        if graduatedMsg { j.append(("paperplane.fill", "Plan updates to Maya: send automatically")) }
+        if graduatedPay { j.append(("creditcard", "Holds under $50: pay automatically")) }
+        if let r = lowReasonPicked { j.append(("hand.raised", "Dinner declined: \"\(r)\" rides the next run")) }
+        if let r = highReasonPicked { j.append(("hand.raised", "Message declined: \"\(r)\" noted")) }
+        if let r = payReasonPicked { j.append(("hand.raised", "Payment declined: \"\(r)\" noted")) }
+        if voiceEdited { j.append(("mic.fill", "Texts to Maya: warmer tone preferred")) }
+        if j.isEmpty { j.append(("sparkles", "Nothing yet. Every choice teaches it.")) }
+        return j
+    }
+
     // The thread behind the message ask.
     @Published var threadVisible = false
 

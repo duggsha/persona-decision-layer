@@ -42,6 +42,11 @@ struct HomeView: View {
                     .transition(.opacity)
             }
 
+            if day.judgmentVisible {
+                JudgmentOverlay()
+                    .transition(.opacity)
+            }
+
             if day.hudVisible {
                 DemoHUD()
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -90,6 +95,73 @@ struct SentSeal<Thread: View>: View {
                 try? await Task.sleep(nanoseconds: 850_000_000)
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { showThread = true }
             }
+        }
+    }
+}
+
+// Everything it learned tonight: the path from asking to knowing.
+struct JudgmentOverlay: View {
+    @EnvironmentObject var day: DayEngine
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.snappy(duration: 0.25)) { day.judgmentVisible = false }
+                }
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    BrandOrb(size: 20)
+                    Text("Its judgment")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
+                    Spacer()
+                    Text("tonight")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Ink.tertiary)
+                }
+                .padding(.horizontal, 18)
+                .frame(height: 52)
+
+                LedgerDivider()
+
+                ForEach(Array(day.judgments.enumerated()), id: \.offset) { i, item in
+                    HStack(spacing: 12) {
+                        Image(systemName: item.0)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Ink.secondary)
+                            .frame(width: 22)
+                        Text(item.1)
+                            .font(.system(size: 14.5))
+                            .foregroundStyle(Ink.primary.opacity(0.92))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 18)
+                    .frame(minHeight: 46)
+                    if i < day.judgments.count - 1 {
+                        LedgerDivider().padding(.leading, 52)
+                    }
+                }
+
+                LedgerDivider()
+
+                Text("Every decision teaches it when to help, when to ask, and when to leave you alone.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Ink.tertiary)
+                    .lineSpacing(3)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
+            }
+            .background(Ink.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Ink.hairline, lineWidth: 1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 40)
         }
     }
 }
@@ -424,47 +496,6 @@ struct QueueView: View {
                 .id(day.queue.count <= 1)
                 .contentMargins(.top, topGap, for: .scrollContent)
                 .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
-                .overlay(alignment: .bottom) {
-                    HStack(spacing: 8) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Color(red: 0.19, green: 0.82, blue: 0.35))
-                            Text(day.pending.isEmpty ? "All handled tonight." : "Last one tonight.")
-                                .font(.system(size: 13.5, weight: .medium))
-                                .foregroundStyle(Ink.secondary)
-                        }
-                        .padding(.horizontal, 15)
-                        .frame(height: 36)
-                        .background(Ink.surface, in: Capsule())
-                        .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
-
-                        if !day.history.isEmpty {
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                    day.historyVisible.toggle()
-                                }
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .font(.system(size: 12, weight: .medium))
-                                    Text("Past actions")
-                                        .font(.system(size: 13.5, weight: .medium))
-                                }
-                                .foregroundStyle(Ink.secondary)
-                                .padding(.horizontal, 14)
-                                .frame(height: 36)
-                                .background(Ink.surface, in: Capsule())
-                                .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.bottom, 2)
-                    .opacity(atEnd ? 1 : 0)
-                    .offset(y: atEnd ? 0 : 10)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: atEnd)
-                }
             }
         }
     }
@@ -536,7 +567,8 @@ struct AllDonePage: View {
     @State private var drawn = false
 
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 0) {
+            Spacer(minLength: 20)
             ZStack {
                 Circle()
                     .stroke(Color.white.opacity(0.12), lineWidth: 3)
@@ -554,14 +586,61 @@ struct AllDonePage: View {
                     .opacity(drawn ? 1 : 0)
             }
             Text("All handled tonight.")
-                .font(.system(size: 19, weight: .semibold))
+                .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Ink.primary)
+                .padding(.top, 18)
             Text("Go enjoy dinner.")
-                .font(.system(size: 14))
+                .font(.system(size: 14.5))
                 .foregroundStyle(Ink.secondary)
+                .padding(.top, 4)
+
+            VStack(spacing: 0) {
+                ForEach(Array(day.history.enumerated()), id: \.offset) { i, item in
+                    HStack(spacing: 12) {
+                        Image(systemName: item.0)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Ink.secondary)
+                            .frame(width: 22)
+                        Text(item.1)
+                            .font(.system(size: 14.5))
+                            .foregroundStyle(Ink.primary.opacity(0.92))
+                        Spacer()
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Ink.tertiary)
+                    }
+                    .frame(height: 44)
+                    if i < day.history.count - 1 {
+                        LedgerDivider()
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
+            .glassCard(radius: 14)
+            .padding(.top, 28)
+
+            Button {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.85)) { day.judgmentVisible = true }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "brain")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("See its judgment")
+                        .font(.system(size: 14.5, weight: .medium))
+                }
+                .foregroundStyle(Ink.secondary)
+                .padding(.horizontal, 16)
+                .frame(height: 40)
+                .background(Color.white.opacity(0.05), in: Capsule())
+                .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 16)
+
+            Spacer(minLength: 20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .glassCard(radius: 14)
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { drawn = true }
         }
@@ -712,11 +791,22 @@ struct QueueCard<Hero: View, Content: View>: View {
 }
 
 // The live run: the card gone flat, streaming what the agent is doing.
-struct RunSurface<Terminal: View>: View {
+struct RunSurface<Chip: View, Terminal: View>: View {
     let kind: String
     let steps: [RunStep]
     let running: Bool
+    @ViewBuilder var chip: Chip
     @ViewBuilder var terminal: Terminal
+
+    init(kind: String, steps: [RunStep], running: Bool,
+         @ViewBuilder chip: () -> Chip = { EmptyView() },
+         @ViewBuilder terminal: () -> Terminal) {
+        self.kind = kind
+        self.steps = steps
+        self.running = running
+        self.chip = chip()
+        self.terminal = terminal()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -734,6 +824,10 @@ struct RunSurface<Terminal: View>: View {
             }
             .padding(.horizontal, 18)
             .frame(height: 52)
+
+            chip
+                .padding(.horizontal, 18)
+                .padding(.bottom, 6)
 
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(steps) { s in
@@ -824,7 +918,7 @@ struct DarkButton: ButtonStyle {
             .frame(maxWidth: .infinity)
             .frame(height: 50)
             .background(
-                Color.white.opacity(prominent ? 0.13 : 0.045),
+                Color.white.opacity(prominent ? 0.17 : 0.045),
                 in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
@@ -853,6 +947,8 @@ struct DinnerCard: View {
         Group {
             if inRun {
                 RunSurface(kind: "Reservation", steps: day.runSteps, running: day.stage != .lowDone) {
+                    graduationRow
+                } terminal: {
                     runTerminal
                 }
                 .transition(.asymmetric(
@@ -952,12 +1048,8 @@ struct DinnerCard: View {
             }
             .frame(height: 50)
             .transition(.opacity)
-
-            graduationRow
-                .padding(.bottom, 4)
         default:
-            graduationRow
-                .padding(.bottom, 4)
+            HStack { Spacer() }.frame(height: 4)
         }
     }
 
@@ -1107,7 +1199,7 @@ struct MessageCard: View {
             if inRun {
                 RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 4) {
                     graduationRowMsg
-                        .padding(.bottom, 4)
+                } terminal: {
                     if day.runSteps.count >= 4 {
                         SentSeal {
                         VStack(alignment: .leading, spacing: 10) {
@@ -1333,7 +1425,7 @@ struct PayCard: View {
             if inRun {
                 RunSurface(kind: "Payment", steps: day.runSteps, running: day.runSteps.count < 4) {
                     graduationRowPay
-                        .padding(.bottom, 4)
+                } terminal: {
                     if day.runSteps.count >= 4 {
                         VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
@@ -1501,15 +1593,11 @@ struct CardGraphic: View {
 
             Spacer()
 
-            HStack(spacing: 7 * scale) {
-                ForEach(0..<3, id: \.self) { _ in
-                    Text("····")
-                        .font(.system(size: 15 * scale, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color.white.opacity(0.35))
-                }
-                Text("4421")
-                    .font(.system(size: 14 * scale, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.white.opacity(0.75))
+            HStack {
+                Text("\u{2022}\u{2022}\u{2022}\u{2022}  \u{2022}\u{2022}\u{2022}\u{2022}  \u{2022}\u{2022}\u{2022}\u{2022}  4421")
+                    .font(.system(size: 13 * scale, weight: .semibold, design: .monospaced))
+                    .kerning(1.5 * scale)
+                    .foregroundStyle(Color.white.opacity(0.6))
                 Spacer()
             }
             .padding(.horizontal, 18 * scale)
