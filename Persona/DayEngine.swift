@@ -9,10 +9,11 @@ enum Stage: Equatable {
     case lowAsk, lowDeclined, lowWorking, lowDone, lowUndoing, lowFailed
     case msgAsk, msgDeclined, msgSent
     case payAsk, payDeclined, payDone
+    case flowersAsk, flowersDeclined, flowersDone
 }
 
 enum Scenario: Int, CaseIterable, Identifiable, Hashable {
-    case dinner, message, deposit
+    case dinner, message, autoText, deposit, flowers
     var id: Int { rawValue }
 }
 
@@ -88,7 +89,11 @@ final class DayEngine: ObservableObject {
     @Published var judgmentVisible = false
 
     var judgments: [(String, String)] {
-        var j: [(String, String)] = []
+        var j: [(String, String)] = [
+            ("calendar", "Gym rebookings: automatic since May"),
+            ("phone", "Hold lines: it waits, you don't"),
+            ("creditcard", "Subscriptions: always ask first"),
+        ]
         if graduated { j.append(("calendar", "Small reservation moves: never ask again")) }
         if graduatedMsg { j.append(("paperplane.fill", "Plan updates to Maya: send automatically")) }
         if graduatedPay { j.append(("creditcard", "Holds under $50: pay automatically")) }
@@ -96,7 +101,8 @@ final class DayEngine: ObservableObject {
         if let r = highReasonPicked { j.append(("hand.raised", "Message declined: \"\(r)\" noted")) }
         if let r = payReasonPicked { j.append(("hand.raised", "Payment declined: \"\(r)\" noted")) }
         if voiceEdited { j.append(("mic.fill", "Texts to Maya: warmer tone preferred")) }
-        if j.isEmpty { j.append(("sparkles", "Nothing yet. Every choice teaches it.")) }
+        if let r = flowersReasonPicked { j.append(("gift", "Flowers for Mom: yours (\"\(r)\")")) }
+        else if flowersNote == "yours" { j.append(("gift", "Flowers for Mom: you handle those")) }
         return j
     }
 
@@ -106,6 +112,13 @@ final class DayEngine: ObservableObject {
     // The payoff of trust: one thing handled without asking.
     @Published var autoCardVisible = false
     @Published var autoCardDismissed = false
+
+    // Card 3: already handled, because you trusted this type.
+    @Published var autoTextResolved = false
+
+    // Card 5: a new kind of ask, built to be declined. It learns.
+    @Published var flowersNote: String? = nil
+    @Published var flowersReasonPicked: String? = nil
 
     var history: [(String, String)] {
         var h: [(String, String)] = []
@@ -118,8 +131,14 @@ final class DayEngine: ObservableObject {
         if let m = mayaNote {
             h.append(("paperplane.fill", m == "texted 7:41" ? "Told Maya · 7:41" : "Maya left to you"))
         }
+        if autoTextResolved {
+            h.append(("bolt.fill", "Auto: told Maya you're wrapping up"))
+        }
         if let p = depositNote {
             h.append(("creditcard", p == "held" ? "Paid $25 table hold" : "Deposit skipped"))
+        }
+        if let f = flowersNote {
+            h.append(("gift", f == "sent" ? "Sent Mom flowers \u{00B7} $40" : "Flowers: you're on it"))
         }
         return h
     }
@@ -152,6 +171,7 @@ final class DayEngine: ObservableObject {
         if dinnerResolved == nil { p.append(.dinner) }
         if mayaNote == nil { p.append(.message) }
         if depositNote == nil { p.append(.deposit) }
+        if flowersNote == nil { p.append(.flowers) }
         return p
     }
 
@@ -159,7 +179,9 @@ final class DayEngine: ObservableObject {
         switch s {
         case .dinner: return dinnerResolved != nil
         case .message: return mayaNote != nil
+        case .autoText: return autoTextResolved
         case .deposit: return depositNote != nil
+        case .flowers: return flowersNote != nil
         }
     }
 
@@ -178,6 +200,13 @@ final class DayEngine: ObservableObject {
         case .deposit:
             switch stage {
             case .payAsk, .payDeclined, .payDone: return true
+            default: return false
+            }
+        case .autoText:
+            return false
+        case .flowers:
+            switch stage {
+            case .flowersAsk, .flowersDeclined, .flowersDone: return true
             default: return false
             }
         }
@@ -223,6 +252,61 @@ final class DayEngine: ObservableObject {
         case .dinner: presentLow()
         case .message: presentMsg()
         case .deposit: presentPay()
+        case .flowers: presentFlowers()
+        case .autoText: break
+        }
+    }
+
+    // The already-handled card: linger, then slide out on its own.
+    func autoTextSeen() {
+        guard !autoTextResolved else { return }
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_600_000_000)
+            guard let self, !self.autoTextResolved else { return }
+            Haptic.light()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                self.autoTextResolved = true
+            }
+            self.advanceSoon(400_000_000)
+        }
+    }
+
+    func presentFlowers() {
+        cancelTimers()
+        flowersReasonPicked = nil
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.9)) { stage = .flowersAsk }
+        Haptic.soft()
+    }
+
+    func approveFlowers() {
+        Haptic.light()
+        setStage(.flowersDone)
+        stream([
+            RunStep(logo: .persona, verb: "Searched", object: "your past approvals"),
+            RunStep(logo: .wallet, verb: "Ordered", object: "peonies \u{00B7} $40"),
+            RunStep(logo: .calendar, verb: "Timed", object: "delivery for 9am"),
+        ], every: 560_000_000) { [weak self] in
+            guard let self else { return }
+            withAnimation(.snappy(duration: 0.35)) { self.flowersNote = "sent" }
+            self.setStage(.idle)
+            self.advanceSoon()
+        }
+    }
+
+    func declineFlowers() {
+        Haptic.light()
+        setStage(.flowersDeclined)
+    }
+
+    func pickFlowersReason(_ reason: String) {
+        withAnimation(.snappy(duration: 0.3)) { flowersReasonPicked = reason }
+        Haptic.light()
+        flowTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            guard let self, !Task.isCancelled else { return }
+            withAnimation(.snappy(duration: 0.35)) { self.flowersNote = "yours" }
+            self.setStage(.idle)
+            self.advanceSoon()
         }
     }
 
@@ -278,6 +362,9 @@ final class DayEngine: ObservableObject {
         graduatedPay = false
         autoCardVisible = false
         autoCardDismissed = false
+        autoTextResolved = false
+        flowersNote = nil
+        flowersReasonPicked = nil
         dinnerResolved = nil
         mayaNote = nil
         depositNote = nil
@@ -295,7 +382,6 @@ final class DayEngine: ObservableObject {
         lowReasonPicked = nil
         undoOpen = false
         setStage(.lowAsk)
-        armAuto()
     }
 
     private func armAuto() {
@@ -637,6 +723,9 @@ final class DayEngine: ObservableObject {
         case "band":
             openFeed()
             bandVisible = true
+        case "flowersAsk":
+            dinnerResolved = "moved"; mayaNote = "texted 7:41"; autoTextResolved = true; depositNote = "held"
+            presentFlowers()
         case "feedLast":
             dinnerResolved = "moved"
             mayaNote = "texted 7:41"
@@ -655,6 +744,8 @@ final class DayEngine: ObservableObject {
             feedPage = .message
         case .payAsk, .payDeclined, .payDone:
             feedPage = .deposit
+        case .flowersAsk, .flowersDeclined, .flowersDone:
+            feedPage = .flowers
         default: break
         }
     }

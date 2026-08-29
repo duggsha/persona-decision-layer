@@ -198,6 +198,8 @@ struct ThreadOverlay: View {
                 LedgerDivider()
 
                 VStack(spacing: 10) {
+                    bubble("carbone tn!! so excited", mine: false, time: "6:41")
+                    bubble("been thinking about their pasta all day", mine: true, time: "6:44")
                     bubble("we still on for 7:30?", mine: false, time: "6:58")
                     bubble("yep! just wrapping this review", mine: true, time: "7:02")
                     bubble("kk leaving soonish", mine: false, time: "7:11")
@@ -397,7 +399,9 @@ struct QueueView: View {
         switch s {
         case .dinner: DinnerCard()
         case .message: MessageCard()
+        case .autoText: AutoTextCard()
         case .deposit: PayCard()
+        case .flowers: FlowersCard()
         }
     }
 
@@ -447,7 +451,6 @@ struct QueueView: View {
                             .frame(height: slot, alignment: .top)
                             .padding(.horizontal, 12)
                             .animation(.spring(response: 0.5, dampingFraction: 0.86), value: day.autoCardVisible)
-                            .onAppear { day.maybeAutoDemo() }
                         }
                         ForEach(day.queue) { s in
                             Group {
@@ -494,8 +497,166 @@ struct QueueView: View {
                 .scrollIndicators(.hidden)
                 .scrollDisabled(day.queue.count <= 1)
                 .id(day.queue.count <= 1)
+                .onChange(of: day.feedPage) { _, p in
+                    if p == .autoText { day.autoTextSeen() }
+                }
                 .contentMargins(.top, topGap, for: .scrollContent)
                 .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
+            }
+        }
+    }
+}
+
+// Card 3: already handled. The payoff of a rule you set.
+struct AutoTextCard: View {
+    @EnvironmentObject var day: DayEngine
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Text("Automatic")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+                Spacer()
+                HStack(spacing: 5) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("no ask needed")
+                        .font(.system(size: 11.5))
+                }
+                .foregroundStyle(Ink.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+
+            LedgerDivider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Told Maya you're wrapping up")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                Text("Handled alone. You trust plan updates to her, and it wrote it the way you would.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Ink.secondary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 12) {
+                        AppLogoView(logo: .persona, size: 22)
+                        Text("Matched")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Ink.primary)
+                        Text("your trust rule for Maya")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Ink.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: 40)
+                    HStack(spacing: 12) {
+                        AppLogoView(logo: .messages, size: 22)
+                        Text("Sent")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Ink.primary)
+                        Text("\u{201C}wrapping up, otw soon\u{201D}")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Ink.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: 40)
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("logged \u{00B7} slides away on its own")
+                        .font(.system(size: 12.5))
+                }
+                .foregroundStyle(Ink.tertiary)
+            }
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 14)
+    }
+}
+
+// Card 5: a new kind of ask. Declining teaches it whose job this is.
+struct FlowersCard: View {
+    @EnvironmentObject var day: DayEngine
+
+    var body: some View {
+        QueueCard(kind: "Errand") {
+            VStack(spacing: 12) {
+                Text("\u{1F490}")
+                    .font(.system(size: 44))
+                VStack(spacing: 5) {
+                    Text("Peonies for Mom")
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
+                    Text("$40 \u{00B7} delivered tomorrow 9am")
+                        .font(.system(size: 13.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Ink.secondary)
+                }
+            }
+            .padding(.vertical, 26)
+        } content: {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Her birthday's tomorrow. Send her usual peonies?")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HowItGotHere(rows: [
+                    (.calendar, "Mom's birthday is tomorrow."),
+                    (.messages, "Last year you sent peonies."),
+                    (.persona, "A new kind of ask, so it asks."),
+                ])
+
+                Spacer(minLength: 4)
+
+                substate
+            }
+            .animation(.snappy(duration: 0.3), value: day.stage)
+        }
+    }
+
+    @ViewBuilder
+    private var substate: some View {
+        switch day.stage {
+        case .flowersDeclined:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Leaving it to you.")
+                    .font(.system(size: 15.5))
+                    .foregroundStyle(Ink.primary)
+                ReasonChips(
+                    reasons: ["I pick them myself", "Too pricey", "Wrong flowers"],
+                    picked: day.flowersReasonPicked,
+                    ack: "Got it. Mom things stay yours.",
+                    onPick: { day.pickFlowersReason($0) })
+            }
+        default:
+            if let note = day.flowersNote {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Ink.primary)
+                    Text(note == "sent" ? "Ordered. Card attached." : "All yours. It won't touch Mom things.")
+                        .font(.system(size: 15.5, weight: .medium))
+                        .foregroundStyle(Ink.primary)
+                    Spacer()
+                }
+                .frame(height: 48)
+            } else {
+                HStack(spacing: 10) {
+                    Button("I'll handle it") { day.declineFlowers() }
+                        .buttonStyle(DarkButton())
+                    Button("Send them") { day.approveFlowers() }
+                        .buttonStyle(DarkButton(prominent: true))
+                }
             }
         }
     }
@@ -994,15 +1155,9 @@ struct DinnerCard: View {
                     }
                 }
                 .buttonStyle(.plain)
-                if day.stage == .lowAsk && day.autoArmed && !day.editingLow {
-                    HStack(spacing: 8) {
-                        AutoArc(progress: day.autoProgress)
-                        Text("moves itself at 7:52 unless you stop it")
-                            .font(.system(size: 13.5))
-                            .foregroundStyle(Ink.tertiary)
-                    }
-                    .transition(.opacity)
-                }
+                Text("reversible \u{00B7} one tap makes this type automatic")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Ink.tertiary)
             }
             .padding(.vertical, 24)
         } content: {
