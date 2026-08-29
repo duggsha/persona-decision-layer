@@ -1070,7 +1070,7 @@ struct MessageCard: View {
                 HowItGotHere(rows: [
                     (.persona, "Dinner moved to \(day.dinnerTime) just now."),
                     (.calendar, "She usually heads out around 7:15."),
-                    (.messages, "A text can't be unsent, so it waits for you."),
+                    (.messages, "Once she sees it, there is no taking it back."),
                 ], initiallyOpen: true)
 
                 Spacer(minLength: 6)
@@ -1236,42 +1236,78 @@ struct CardGraphic: View {
     var scale: CGFloat = 1.0
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            RoundedRectangle(cornerRadius: 4 * scale, style: .continuous)
-                .fill(
-                    LinearGradient(colors: [Color(white: 0.34), Color(white: 0.22)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 33 * scale, height: 24 * scale)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 4 * scale, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
-                }
-                .padding(.top, 16 * scale)
-                .padding(.leading, 16 * scale)
+            HStack(alignment: .top) {
+                RoundedRectangle(cornerRadius: 4.5 * scale, style: .continuous)
+                    .fill(
+                        LinearGradient(colors: [Color(white: 0.42), Color(white: 0.24)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 38 * scale, height: 28 * scale)
+                    .overlay {
+                        VStack(spacing: 3.5 * scale) {
+                            Rectangle().fill(Color.black.opacity(0.35)).frame(height: 1)
+                            Rectangle().fill(Color.black.opacity(0.35)).frame(height: 1)
+                        }
+                        .padding(.horizontal, 5 * scale)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 4.5 * scale, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)
+                    }
+                Spacer()
+                Image(systemName: "wave.3.right")
+                    .font(.system(size: 13 * scale, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.4))
+            }
+            .padding(.top, 18 * scale)
+            .padding(.horizontal, 18 * scale)
 
             Spacer()
 
+            HStack(spacing: 7 * scale) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Text("····")
+                        .font(.system(size: 15 * scale, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.35))
+                }
+                Text("4")
+                    .font(.system(size: 14 * scale, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.75))
+                Spacer()
+            }
+            .padding(.horizontal, 18 * scale)
+            .padding(.bottom, 14 * scale)
+
             HStack {
-                Text("AMEX")
-                    .font(.system(size: 11 * scale, weight: .semibold, design: .monospaced))
-                    .kerning(1.2 * scale)
+                Text("S. DUGGAL")
+                    .font(.system(size: 10 * scale, weight: .medium, design: .monospaced))
+                    .kerning(1.4 * scale)
                     .foregroundStyle(Ink.secondary)
                 Spacer()
-                Text("···· 4")
-                    .font(.system(size: 13 * scale, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Ink.secondary)
+                Text("AMEX")
+                    .font(.system(size: 12 * scale, weight: .bold, design: .monospaced))
+                    .kerning(1.6 * scale)
+                    .foregroundStyle(Color.white.opacity(0.8))
             }
-            .padding(.horizontal, 16 * scale)
-            .padding(.bottom, 13 * scale)
+            .padding(.horizontal, 18 * scale)
+            .padding(.bottom, 16 * scale)
         }
-        .frame(width: 176 * scale, height: 110 * scale)
+        .frame(width: 216 * scale, height: 136 * scale)
         .background(
-            LinearGradient(colors: [Color(white: 0.13), Color(white: 0.075)],
+            LinearGradient(colors: [Color(white: 0.155), Color(white: 0.07)],
                            startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 11 * scale, style: .continuous))
+            in: RoundedRectangle(cornerRadius: 13 * scale, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 11 * scale, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 13 * scale, style: .continuous)
+                .fill(
+                    LinearGradient(colors: [Color.white.opacity(0.07), .clear, .clear],
+                                   startPoint: .topLeading, endPoint: .center))
+                .allowsHitTesting(false)
         }
+        .overlay {
+            RoundedRectangle(cornerRadius: 13 * scale, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.5), radius: 18 * scale, y: 10 * scale)
     }
 }
 
