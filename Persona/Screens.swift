@@ -911,6 +911,36 @@ struct MessageCard: View {
 
     private var inRun: Bool { day.stage == .msgSent }
 
+    @ViewBuilder
+    private var graduationRowMsg: some View {
+        if day.graduatedMsg {
+            HStack(spacing: 7) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+                Text("Plan updates to Maya: automatic.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Ink.secondary)
+            }
+            .frame(height: 32)
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        } else {
+            Button {
+                day.graduateMsg()
+            } label: {
+                Text("Auto-send plan updates to Maya")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .background(Color.white.opacity(0.05), in: Capsule())
+                    .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity)
+        }
+    }
+
     var body: some View {
         Group {
             if inRun {
