@@ -573,7 +573,7 @@ struct AutoTextCard: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark")
                         .font(.system(size: 11, weight: .semibold))
-                    Text("logged \u{00B7} slides away on its own")
+                    Text("logged \u{00B7} swipe on when you\u{2019}re ready")
                         .font(.system(size: 12.5))
                 }
                 .foregroundStyle(Ink.tertiary)

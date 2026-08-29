@@ -263,16 +263,7 @@ final class DayEngine: ObservableObject {
 
     // The already-handled card: linger, then slide out on its own.
     func autoTextSeen() {
-        guard !autoTextResolved else { return }
-        Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 5_200_000_000)
-            guard let self, !self.autoTextResolved else { return }
-            Haptic.light()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
-                self.autoTextResolved = true
-            }
-            self.advanceSoon(400_000_000)
-        }
+        // It stays until you move past it. Nothing important disappears.
     }
 
     func presentFlowers() {
@@ -601,7 +592,7 @@ final class DayEngine: ObservableObject {
                 try? await Task.sleep(nanoseconds: 2_600_000_000)
                 withAnimation(.snappy(duration: 0.35)) { self.mayaNote = "texted 7:41" }
                 self.setStage(.idle)
-                self.advanceSoon()
+                // the auto card now sits next in the queue: swipe to it
             }
         }
     }
