@@ -73,6 +73,12 @@ final class DayEngine: ObservableObject {
     // The live run: steps stream in while the agent works.
     @Published var runSteps: [RunStep] = []
 
+    // Trust graduates: approve once, offer to stop asking for the small stuff.
+    @Published var graduated = false
+
+    // The same moment, on the band.
+    @Published var bandVisible = false
+
     // Demo control
     @Published var failNextBooking = false
     @Published var hudVisible = false
@@ -150,9 +156,15 @@ final class DayEngine: ObservableObject {
         }
     }
 
+    func graduate() {
+        Haptic.success()
+        withAnimation(.snappy(duration: 0.3)) { graduated = true }
+    }
+
     func resetDay() {
         cancelTimers()
         receipts = []
+        graduated = false
         dinnerResolved = nil
         mayaNote = nil
         depositNote = nil
@@ -492,6 +504,9 @@ final class DayEngine: ObservableObject {
         case "payDeclined": presentPay(); declinePay()
         case "payDone": presentPay(); stage = .payDone; flowTask?.cancel()
         case "feed": openFeed()
+        case "band":
+            openFeed()
+            bandVisible = true
         case "feedLast":
             dinnerResolved = "moved"
             mayaNote = "texted 7:41"

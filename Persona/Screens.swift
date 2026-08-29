@@ -27,12 +27,90 @@ struct HomeView: View {
                     .transition(.opacity)
             }
 
+            if day.bandVisible {
+                BandOverlay()
+                    .transition(.opacity)
+            }
+
             if day.hudVisible {
                 DemoHUD()
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.88), value: day.hudVisible)
+    }
+}
+
+// MARK: - The same moment, on the band. Their hardware future, previewed.
+
+struct BandOverlay: View {
+    @EnvironmentObject var day: DayEngine
+    @State private var appeared = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.75)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.snappy(duration: 0.25)) { day.bandVisible = false }
+                }
+
+            VStack(spacing: 26) {
+                VStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(white: 0.10))
+                        .frame(width: 92, height: 34)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 34, style: .continuous)
+                            .fill(
+                                LinearGradient(colors: [Color(white: 0.16), Color(white: 0.06)],
+                                               startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 224, height: 92)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                            }
+                        HStack(spacing: 14) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Dinner \u{2192} 8:00")
+                                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Ink.primary)
+                                HStack(spacing: 5) {
+                                    AutoArc(progress: 0.35)
+                                    Text("7:52")
+                                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(Ink.tertiary)
+                                }
+                            }
+                            VStack(spacing: 8) {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(.black)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.white, in: Circle())
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(Ink.secondary)
+                                    .frame(width: 24, height: 24)
+                                    .overlay { Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) }
+                            }
+                        }
+                    }
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(white: 0.10))
+                        .frame(width: 92, height: 34)
+                }
+
+                Text("The same moment, on the band.")
+                    .font(.system(size: 13.5))
+                    .foregroundStyle(Ink.secondary)
+            }
+            .scaleEffect(appeared ? 1 : 0.92)
+            .opacity(appeared ? 1 : 0)
+            .onAppear {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { appeared = true }
+            }
+        }
     }
 }
 
@@ -76,6 +154,22 @@ struct QueueView: View {
                 let slot = geo.size.height * 0.70
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Welcome back, Shaurya")
+                                .font(.system(size: 23, weight: .light))
+                                .foregroundStyle(Ink.primary)
+                            Text(day.pending.isEmpty
+                                 ? "Nothing needs you."
+                                 : "\(day.pending.count) thing\(day.pending.count == 1 ? "" : "s") want your okay tonight.")
+                                .font(.system(size: 23, weight: .light))
+                                .foregroundStyle(Ink.secondary)
+                                .contentTransition(.numericText())
+                                .animation(.snappy(duration: 0.3), value: day.pending.count)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 2)
+                        .padding(.bottom, 2)
                         ForEach(Scenario.allCases) { s in
                             Group {
                                 switch s {
@@ -87,6 +181,8 @@ struct QueueView: View {
                             .frame(height: slot)
                             .id(s)
                             .padding(.horizontal, 12)
+                            .opacity((day.feedPage ?? .dinner) == s ? 1 : 0.75)
+                            .animation(.snappy(duration: 0.3), value: day.feedPage)
                         }
                     }
                     .scrollTargetLayout()
@@ -95,27 +191,6 @@ struct QueueView: View {
                 .scrollPosition(id: $day.feedPage)
                 .scrollIndicators(.hidden)
                 .contentMargins(.vertical, (geo.size.height - slot) / 2, for: .scrollContent)
-                .overlay(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Welcome back, Shaurya")
-                            .font(.system(size: 21, weight: .semibold))
-                            .foregroundStyle(Ink.primary)
-                        Text(day.pending.isEmpty
-                             ? "Nothing needs you."
-                             : "\(day.pending.count) thing\(day.pending.count == 1 ? "" : "s") want your okay.")
-                            .font(.system(size: 13.5))
-                            .foregroundStyle(Ink.secondary)
-                            .contentTransition(.numericText())
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 14)
-                    .opacity(pageIndex == 0 ? 1 : 0)
-                    .offset(y: pageIndex == 0 ? 0 : -12)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: pageIndex)
-                    .animation(.snappy(duration: 0.3), value: day.pending.count)
-                    .allowsHitTesting(false)
-                }
                 .overlay(alignment: .bottom) {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
@@ -438,7 +513,6 @@ struct DinnerCard: View {
     private var askCard: some View {
         QueueCard(kind: "Reservation") {
             VStack(spacing: 14) {
-                MicroLabel(text: "Dinner · Carbone · table for two")
                 Button {
                     guard day.stage == .lowAsk else { return }
                     if day.editingLow { day.pick(time: day.dinnerTime) } else { day.beginEditLow() }
@@ -520,8 +594,41 @@ struct DinnerCard: View {
             }
             .frame(height: 50)
             .transition(.opacity)
+
+            graduationRow
+                .padding(.bottom, 4)
         default:
             HStack { Spacer() }.frame(height: 6)
+        }
+    }
+
+    @ViewBuilder
+    private var graduationRow: some View {
+        if day.graduated {
+            HStack(spacing: 7) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+                Text("Won't ask for small moves next time.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Ink.secondary)
+            }
+            .frame(height: 34)
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        } else {
+            Button {
+                day.graduate()
+            } label: {
+                Text("Skip asking for small moves")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+                    .background(Color.white.opacity(0.05), in: Capsule())
+                    .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity)
         }
     }
 
@@ -623,17 +730,24 @@ struct MessageCard: View {
 
     private var askCard: some View {
         QueueCard(kind: "Message") {
-            VStack(spacing: 13) {
+            VStack(alignment: .leading, spacing: 13) {
+                Text("Tell Maya dinner moved to 8:00?")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                 HStack(spacing: 11) {
-                    PhotoAvatar(name: "maya", size: 44)
+                    PhotoAvatar(name: "maya", size: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Maya")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Ink.primary)
                         HStack(spacing: 5) {
-                            AppLogoView(logo: .messages, size: 14)
+                            AppLogoView(logo: .messages, size: 13)
                             Text("iMessage")
-                                .font(.system(size: 12.5))
+                                .font(.system(size: 12))
                                 .foregroundStyle(Ink.tertiary)
                         }
                     }
@@ -717,15 +831,9 @@ struct MessageCard: View {
             .padding(.vertical, 13)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                Text("She heads out around 7:15. Tell her the new time?")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Ink.primary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 HowItGotHere(rows: [
                     (.persona, "Dinner moved to \(day.dinnerTime) just now."),
-                    (.calendar, "Maya usually leaves around 7:15."),
+                    (.calendar, "She usually heads out around 7:15."),
                     (.messages, "A text can't be unsent, so it waits for you."),
                 ])
 
@@ -798,16 +906,14 @@ struct PayCard: View {
 
     private var askCard: some View {
         QueueCard(kind: "Payment") {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 CardGraphic()
-                VStack(spacing: 6) {
-                    Text("$25.00")
-                        .font(.system(size: 44, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Ink.primary)
-                    MicroLabel(text: "Carbone · table hold · refundable to 6")
-                }
+                Text("$25.00")
+                    .font(.system(size: 46, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Ink.primary)
             }
-            .padding(.vertical, 20)
+            .padding(.top, 30)
+            .padding(.bottom, 24)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Carbone holds the 8:00 table with a deposit. Cover it?")
@@ -820,7 +926,7 @@ struct PayCard: View {
                     (.opentable, "Carbone holds moved tables with a deposit."),
                     (.wallet, "Goes on the Amex ending 4."),
                     (.persona, "Money is irreversible, so it uses the system confirm."),
-                ])
+                ], initiallyOpen: true)
 
                 Spacer(minLength: 6)
 
@@ -1049,6 +1155,10 @@ struct DemoHUD: View {
             hudButton("Failed") { day.jump(.lowFailed) }
             hudButton("Message ask") { day.jump(.msgAsk) }
             hudButton("Pay ask") { day.jump(.payAsk) }
+            hudButton("Band preview") {
+                day.hudVisible = false
+                withAnimation(.snappy(duration: 0.3)) { day.bandVisible = true }
+            }
         }
         .padding(18)
         .frame(width: 236)
