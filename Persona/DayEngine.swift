@@ -537,13 +537,13 @@ final class DayEngine: ObservableObject {
         case "failed":
             dinnerTime = "8:00"
             setStage(.lowFailed)
-        case "highAsk", "msgAsk": presentMsg()
-        case "highEdit", "msgEdit": presentMsg(); beginEditHigh()
-        case "highDeclined", "msgDeclined": presentMsg(); declineHigh()
-        case "sent", "msgSent": presentMsg(); stage = .msgSent; flowTask?.cancel()
-        case "payAsk": presentPay()
-        case "payDeclined": presentPay(); declinePay()
-        case "payDone": presentPay(); stage = .payDone; flowTask?.cancel()
+        case "highAsk", "msgAsk": dinnerResolved = "moved"; presentMsg()
+        case "highEdit", "msgEdit": dinnerResolved = "moved"; presentMsg(); beginEditHigh()
+        case "highDeclined", "msgDeclined": dinnerResolved = "moved"; presentMsg(); declineHigh()
+        case "sent", "msgSent": dinnerResolved = "moved"; presentMsg(); stage = .msgSent; flowTask?.cancel()
+        case "payAsk": dinnerResolved = "moved"; mayaNote = "texted 7:41"; presentPay()
+        case "payDeclined": dinnerResolved = "moved"; mayaNote = "texted 7:41"; presentPay(); declinePay()
+        case "payDone": dinnerResolved = "moved"; mayaNote = "texted 7:41"; presentPay(); stage = .payDone; flowTask?.cancel()
         case "feed": openFeed()
         case "band":
             openFeed()
