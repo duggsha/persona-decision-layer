@@ -759,6 +759,7 @@ struct RunSurface<Terminal: View>: View {
 
             terminal
                 .padding(.horizontal, 18)
+                .padding(.top, 10)
                 .padding(.bottom, 14)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -955,7 +956,8 @@ struct DinnerCard: View {
             graduationRow
                 .padding(.bottom, 4)
         default:
-            HStack { Spacer() }.frame(height: 6)
+            graduationRow
+                .padding(.bottom, 4)
         }
     }
 
@@ -1103,8 +1105,10 @@ struct MessageCard: View {
     var body: some View {
         Group {
             if inRun {
-                RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 3) {
-                    if day.runSteps.count >= 3 {
+                RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 4) {
+                    graduationRowMsg
+                        .padding(.bottom, 4)
+                    if day.runSteps.count >= 4 {
                         SentSeal {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
@@ -1137,8 +1141,6 @@ struct MessageCard: View {
                         .padding(.bottom, 2)
                         .transition(.scale(scale: 0.92).combined(with: .opacity))
 
-                        graduationRowMsg
-                            .padding(.bottom, 6)
                     } else {
                         HStack { Spacer() }.frame(height: 6)
                     }
@@ -1329,8 +1331,10 @@ struct PayCard: View {
     var body: some View {
         Group {
             if inRun {
-                RunSurface(kind: "Payment", steps: day.runSteps, running: day.runSteps.count < 3) {
-                    if day.runSteps.count >= 3 {
+                RunSurface(kind: "Payment", steps: day.runSteps, running: day.runSteps.count < 4) {
+                    graduationRowPay
+                        .padding(.bottom, 4)
+                    if day.runSteps.count >= 4 {
                         VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
                             Image(systemName: "checkmark.seal.fill")
@@ -1347,8 +1351,6 @@ struct PayCard: View {
                         .frame(height: 46)
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
 
-                        graduationRowPay
-                            .padding(.bottom, 6)
                         }
                     } else {
                         HStack { Spacer() }.frame(height: 6)

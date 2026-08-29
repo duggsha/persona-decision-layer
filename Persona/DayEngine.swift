@@ -339,6 +339,7 @@ final class DayEngine: ObservableObject {
         setStage(.lowWorking)
         let fails = failNextBooking
         var steps: [RunStep] = [
+            RunStep(logo: .persona, verb: "Searched", object: "your past approvals"),
             RunStep(logo: .calendar, verb: "Checked", object: "tonight's plan"),
             RunStep(logo: .opentable, verb: "Asked", object: "Carbone for \(dinnerTime)"),
         ]
@@ -484,6 +485,7 @@ final class DayEngine: ObservableObject {
         Haptic.rigid()
         setStage(.msgSent)
         stream([
+            RunStep(logo: .persona, verb: "Searched", object: "your past approvals"),
             RunStep(logo: .messages, verb: "Opened", object: "the thread with Maya"),
             RunStep(logo: .messages, verb: "Sent", object: "as you"),
             RunStep(logo: .persona, verb: "Delivered", object: "7:41"),
@@ -541,6 +543,7 @@ final class DayEngine: ObservableObject {
         Haptic.rigid()
         setStage(.payDone)
         stream([
+            RunStep(logo: .persona, verb: "Searched", object: "your past approvals"),
             RunStep(logo: .wallet, verb: "Charged", object: "Amex \u{00B7}\u{00B7}\u{00B7} 4 \u{00B7} $25.00"),
             RunStep(logo: .opentable, verb: "Held", object: "the \(dinnerTime) table"),
             RunStep(logo: .persona, verb: "Saved", object: "the receipt"),
