@@ -270,7 +270,7 @@ struct QueueView: View {
             .frame(height: 24)
 
             GeometryReader { geo in
-                let slot = geo.size.height * 0.78
+                let slot = geo.size.height * 0.80
                 let topGap: CGFloat = 16
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 22) {
@@ -306,7 +306,7 @@ struct QueueView: View {
                                         .frame(maxHeight: .infinity)
                                 }
                             }
-                            .frame(height: slot)
+                            .frame(height: slot, alignment: .top)
                             .id(s)
                             .padding(.horizontal, 12)
                             .opacity((day.feedPage ?? day.queue.first ?? .dinner) == s ? 1 : 0.75)
@@ -323,6 +323,7 @@ struct QueueView: View {
                 .scrollPosition(id: $day.feedPage)
                 .scrollIndicators(.hidden)
                 .scrollDisabled(day.queue.count <= 1)
+                .id(day.queue.count <= 1)
                 .contentMargins(.top, topGap, for: .scrollContent)
                 .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
                 .overlay(alignment: .bottom) {
