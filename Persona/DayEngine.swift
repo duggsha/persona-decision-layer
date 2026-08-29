@@ -544,7 +544,7 @@ final class DayEngine: ObservableObject {
         setStage(.payDone)
         stream([
             RunStep(logo: .persona, verb: "Searched", object: "your past approvals"),
-            RunStep(logo: .wallet, verb: "Charged", object: "Amex \u{00B7}\u{00B7}\u{00B7} 4 \u{00B7} $25.00"),
+            RunStep(logo: .wallet, verb: "Charged", object: "Amex \u{00B7}\u{00B7}\u{00B7}\u{00B7} 4421"),
             RunStep(logo: .opentable, verb: "Held", object: "the \(dinnerTime) table"),
             RunStep(logo: .persona, verb: "Saved", object: "the receipt"),
         ], every: 560_000_000) { [weak self] in

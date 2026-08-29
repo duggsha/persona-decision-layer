@@ -1419,7 +1419,7 @@ struct PayCard: View {
 
                 HowItGotHere(rows: [
                     (.opentable, "Carbone holds moved tables with a deposit."),
-                    (.wallet, "Goes on the Amex ending 4."),
+                    (.wallet, "Goes on the Amex ending 4421."),
                     (.persona, "Money is irreversible, so it uses the system confirm."),
                 ], initiallyOpen: true)
 
@@ -1507,7 +1507,7 @@ struct CardGraphic: View {
                         .font(.system(size: 15 * scale, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color.white.opacity(0.35))
                 }
-                Text("4")
+                Text("4421")
                     .font(.system(size: 14 * scale, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Color.white.opacity(0.75))
                 Spacer()
@@ -1676,6 +1676,9 @@ struct SideButtonConfirm: View {
                     Text("Confirm with Side Button")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Ink.primary)
+                    Text("in this demo, double-tap anywhere")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Ink.tertiary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 26)
