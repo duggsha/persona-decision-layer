@@ -128,7 +128,7 @@ struct QueueView: View {
             HStack(spacing: 7) {
                 BrandOrb(size: 17)
                 Text("PERSONA")
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .kerning(1.2)
                     .foregroundStyle(Ink.primary)
                 Spacer()
@@ -152,13 +152,13 @@ struct QueueView: View {
 
             GeometryReader { geo in
                 let slot = geo.size.height * 0.78
-                let topGap: CGFloat = 34
+                let topGap: CGFloat = 16
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 12) {
                         ForEach(Scenario.allCases) { s in
                             Group {
                                 if s == .dinner {
-                                    VStack(alignment: .leading, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 16) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text("Welcome back, Shaurya")
                                                 .font(.system(size: 22, weight: .light))
