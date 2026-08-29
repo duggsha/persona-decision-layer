@@ -173,6 +173,19 @@ final class DayEngine: ObservableObject {
         }
     }
 
+    // The queue is mechanical: finish one thing, the next rises.
+    private func advanceSoon(_ delay: UInt64 = 550_000_000) {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard let self, self.feedOpen else { return }
+            if let next = self.pending.first {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
+                    self.feedPage = next
+                }
+            }
+        }
+    }
+
     func graduate() {
         Haptic.success()
         withAnimation(.snappy(duration: 0.3)) { graduated = true }
@@ -294,6 +307,7 @@ final class DayEngine: ObservableObject {
         undoOpen = false
         withAnimation(.snappy(duration: 0.35)) { dinnerResolved = "moved" }
         setStage(.idle)
+        advanceSoon()
     }
 
     func undo() {
@@ -308,6 +322,7 @@ final class DayEngine: ObservableObject {
             guard let self else { return }
             withAnimation(.snappy(duration: 0.35)) { self.dinnerResolved = "kept" }
             self.setStage(.idle)
+            self.advanceSoon()
         }
     }
 
@@ -325,6 +340,7 @@ final class DayEngine: ObservableObject {
             guard let self, !Task.isCancelled else { return }
             withAnimation(.snappy(duration: 0.35)) { self.dinnerResolved = "kept" }
             self.setStage(.idle)
+            self.advanceSoon()
         }
     }
 
@@ -345,6 +361,7 @@ final class DayEngine: ObservableObject {
         } else {
             withAnimation(.snappy(duration: 0.35)) { dinnerResolved = "kept" }
             setStage(.idle)
+            advanceSoon()
         }
     }
 
@@ -405,8 +422,12 @@ final class DayEngine: ObservableObject {
             RunStep(logo: .persona, verb: "Delivered", object: "7:41"),
         ], every: 560_000_000) { [weak self] in
             guard let self else { return }
-            withAnimation(.snappy(duration: 0.35)) { self.mayaNote = "texted 7:41" }
-            self.setStage(.idle)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_400_000_000)
+                withAnimation(.snappy(duration: 0.35)) { self.mayaNote = "texted 7:41" }
+                self.setStage(.idle)
+                self.advanceSoon()
+            }
         }
     }
 
@@ -423,6 +444,7 @@ final class DayEngine: ObservableObject {
             guard let self, !Task.isCancelled else { return }
             withAnimation(.snappy(duration: 0.35)) { self.mayaNote = "you'll tell her" }
             self.setStage(.idle)
+            self.advanceSoon()
         }
     }
 
@@ -459,6 +481,7 @@ final class DayEngine: ObservableObject {
             guard let self else { return }
             withAnimation(.snappy(duration: 0.35)) { self.depositNote = "held" }
             self.setStage(.idle)
+            self.advanceSoon()
         }
     }
 
@@ -475,6 +498,7 @@ final class DayEngine: ObservableObject {
             guard let self, !Task.isCancelled else { return }
             withAnimation(.snappy(duration: 0.35)) { self.depositNote = "you'll pay there" }
             self.setStage(.idle)
+            self.advanceSoon()
         }
     }
 
