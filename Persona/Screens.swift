@@ -147,7 +147,7 @@ struct QueueView: View {
                 .font(.system(size: 12))
                 .animation(.snappy(duration: 0.25), value: pageIndex)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
             .frame(height: 24)
 
             GeometryReader { geo in
@@ -171,7 +171,7 @@ struct QueueView: View {
                                                 .contentTransition(.numericText())
                                                 .animation(.snappy(duration: 0.3), value: day.pending.count)
                                         }
-                                        .padding(.horizontal, 12)
+                                        .padding(.horizontal, 2)
                                         DinnerCard()
                                             .frame(maxHeight: .infinity)
                                     }
@@ -507,10 +507,14 @@ struct DinnerCard: View {
                 RunSurface(kind: "Reservation", steps: day.runSteps, running: day.stage != .lowDone) {
                     runTerminal
                 }
-                .transition(.blurReplace)
+                .transition(.asymmetric(
+                    insertion: .offset(y: 18).combined(with: .opacity),
+                    removal: .opacity))
             } else {
                 askCard
-                    .transition(.blurReplace)
+                    .transition(.asymmetric(
+                        insertion: .opacity,
+                        removal: .move(edge: .trailing).combined(with: .opacity)))
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
@@ -723,12 +727,33 @@ struct MessageCard: View {
         Group {
             if inRun {
                 RunSurface(kind: "Message", steps: day.runSteps, running: day.runSteps.count < 3) {
-                    HStack { Spacer() }.frame(height: 6)
+                    if day.runSteps.count >= 3 {
+                        HStack(spacing: 10) {
+                            Image(systemName: "paperplane.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Ink.primary)
+                            Text("Sent to Maya")
+                                .font(.system(size: 16.5, weight: .semibold))
+                                .foregroundStyle(Ink.primary)
+                            Spacer()
+                            Text("7:41")
+                                .font(.clock())
+                                .foregroundStyle(Ink.tertiary)
+                        }
+                        .frame(height: 46)
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                    } else {
+                        HStack { Spacer() }.frame(height: 6)
+                    }
                 }
-                .transition(.blurReplace)
+                .transition(.asymmetric(
+                    insertion: .offset(y: 18).combined(with: .opacity),
+                    removal: .opacity))
             } else {
                 askCard
-                    .transition(.blurReplace)
+                    .transition(.asymmetric(
+                        insertion: .opacity,
+                        removal: .move(edge: .trailing).combined(with: .opacity)))
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
@@ -841,7 +866,7 @@ struct MessageCard: View {
                     (.persona, "Dinner moved to \(day.dinnerTime) just now."),
                     (.calendar, "She usually heads out around 7:15."),
                     (.messages, "A text can't be unsent, so it waits for you."),
-                ])
+                ], initiallyOpen: true)
 
                 Spacer(minLength: 6)
 
@@ -899,12 +924,33 @@ struct PayCard: View {
         Group {
             if inRun {
                 RunSurface(kind: "Payment", steps: day.runSteps, running: day.runSteps.count < 3) {
-                    HStack { Spacer() }.frame(height: 6)
+                    if day.runSteps.count >= 3 {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Ink.primary)
+                            Text("Paid. Table's held.")
+                                .font(.system(size: 16.5, weight: .semibold))
+                                .foregroundStyle(Ink.primary)
+                            Spacer()
+                            Text("7:42")
+                                .font(.clock())
+                                .foregroundStyle(Ink.tertiary)
+                        }
+                        .frame(height: 46)
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                    } else {
+                        HStack { Spacer() }.frame(height: 6)
+                    }
                 }
-                .transition(.blurReplace)
+                .transition(.asymmetric(
+                    insertion: .offset(y: 18).combined(with: .opacity),
+                    removal: .opacity))
             } else {
                 askCard
-                    .transition(.blurReplace)
+                    .transition(.asymmetric(
+                        insertion: .opacity,
+                        removal: .move(edge: .trailing).combined(with: .opacity)))
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
