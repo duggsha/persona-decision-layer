@@ -75,6 +75,8 @@ final class DayEngine: ObservableObject {
 
     // Trust graduates: approve once, offer to stop asking for the small stuff.
     @Published var graduated = false
+    @Published var graduatedMsg = false
+    @Published var graduatedPay = false
 
     // The same moment, on the band.
     @Published var bandVisible = false
@@ -216,10 +218,22 @@ final class DayEngine: ObservableObject {
         withAnimation(.snappy(duration: 0.3)) { graduated = true }
     }
 
+    func graduateMsg() {
+        Haptic.success()
+        withAnimation(.snappy(duration: 0.3)) { graduatedMsg = true }
+    }
+
+    func graduatePay() {
+        Haptic.success()
+        withAnimation(.snappy(duration: 0.3)) { graduatedPay = true }
+    }
+
     func resetDay() {
         cancelTimers()
         receipts = []
         graduated = false
+        graduatedMsg = false
+        graduatedPay = false
         dinnerResolved = nil
         mayaNote = nil
         depositNote = nil
@@ -448,7 +462,7 @@ final class DayEngine: ObservableObject {
         ], every: 560_000_000) { [weak self] in
             guard let self else { return }
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 1_400_000_000)
+                try? await Task.sleep(nanoseconds: 2_600_000_000)
                 withAnimation(.snappy(duration: 0.35)) { self.mayaNote = "texted 7:41" }
                 self.setStage(.idle)
                 self.advanceSoon()
@@ -504,9 +518,12 @@ final class DayEngine: ObservableObject {
             RunStep(logo: .persona, verb: "Saved", object: "the receipt"),
         ], every: 560_000_000) { [weak self] in
             guard let self else { return }
-            withAnimation(.snappy(duration: 0.35)) { self.depositNote = "held" }
-            self.setStage(.idle)
-            self.advanceSoon()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_400_000_000)
+                withAnimation(.snappy(duration: 0.35)) { self.depositNote = "held" }
+                self.setStage(.idle)
+                self.advanceSoon()
+            }
         }
     }
 

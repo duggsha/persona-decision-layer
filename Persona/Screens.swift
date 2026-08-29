@@ -945,8 +945,11 @@ struct MessageCard: View {
                             }
                         }
                         }
-                        .padding(.bottom, 6)
+                        .padding(.bottom, 2)
                         .transition(.scale(scale: 0.92).combined(with: .opacity))
+
+                        graduationRowMsg
+                            .padding(.bottom, 6)
                     } else {
                         HStack { Spacer() }.frame(height: 6)
                     }
@@ -1130,6 +1133,7 @@ struct PayCard: View {
             if inRun {
                 RunSurface(kind: "Payment", steps: day.runSteps, running: day.runSteps.count < 3) {
                     if day.runSteps.count >= 3 {
+                        VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(.system(size: 16, weight: .semibold))
@@ -1144,6 +1148,10 @@ struct PayCard: View {
                         }
                         .frame(height: 46)
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
+
+                        graduationRowPay
+                            .padding(.bottom, 6)
+                        }
                     } else {
                         HStack { Spacer() }.frame(height: 6)
                     }
@@ -1159,6 +1167,36 @@ struct PayCard: View {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.86), value: inRun)
+    }
+
+    @ViewBuilder
+    private var graduationRowPay: some View {
+        if day.graduatedPay {
+            HStack(spacing: 7) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+                Text("Holds under $50: automatic.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Ink.secondary)
+            }
+            .frame(height: 32)
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        } else {
+            Button {
+                day.graduatePay()
+            } label: {
+                Text("Auto-pay holds under $50")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .background(Color.white.opacity(0.05), in: Capsule())
+                    .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity)
+        }
     }
 
     private var askCard: some View {
