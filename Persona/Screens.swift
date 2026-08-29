@@ -125,11 +125,11 @@ struct QueueView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                BrandOrb(size: 22)
+            HStack(spacing: 7) {
+                BrandOrb(size: 17)
                 Text("PERSONA")
-                    .font(.system(size: 14, weight: .semibold))
-                    .kerning(1.4)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .kerning(1.2)
                     .foregroundStyle(Ink.primary)
                 Spacer()
                 HStack(spacing: 6) {
@@ -144,38 +144,43 @@ struct QueueView: View {
                             .foregroundStyle(Ink.tertiary)
                     }
                 }
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .animation(.snappy(duration: 0.25), value: pageIndex)
             }
-            .padding(.horizontal, 18)
-            .frame(height: 32)
+            .padding(.horizontal, 16)
+            .frame(height: 24)
 
             GeometryReader { geo in
-                let slot = geo.size.height * 0.70
+                let slot = geo.size.height * 0.78
+                let topGap: CGFloat = 34
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Welcome back, Shaurya")
-                                .font(.system(size: 23, weight: .light))
-                                .foregroundStyle(Ink.primary)
-                            Text(day.pending.isEmpty
-                                 ? "Nothing needs you."
-                                 : "\(day.pending.count) thing\(day.pending.count == 1 ? "" : "s") want your okay tonight.")
-                                .font(.system(size: 23, weight: .light))
-                                .foregroundStyle(Ink.secondary)
-                                .contentTransition(.numericText())
-                                .animation(.snappy(duration: 0.3), value: day.pending.count)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 2)
-                        .padding(.bottom, 2)
                         ForEach(Scenario.allCases) { s in
                             Group {
-                                switch s {
-                                case .dinner: DinnerCard()
-                                case .message: MessageCard()
-                                case .deposit: PayCard()
+                                if s == .dinner {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Welcome back, Shaurya")
+                                                .font(.system(size: 22, weight: .light))
+                                                .foregroundStyle(Ink.primary)
+                                            Text(day.pending.isEmpty
+                                                 ? "Nothing needs you."
+                                                 : "\(day.pending.count) thing\(day.pending.count == 1 ? "" : "s") want your okay tonight.")
+                                                .font(.system(size: 22, weight: .light))
+                                                .foregroundStyle(Ink.primary)
+                                                .contentTransition(.numericText())
+                                                .animation(.snappy(duration: 0.3), value: day.pending.count)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        DinnerCard()
+                                            .frame(maxHeight: .infinity)
+                                    }
+                                } else {
+                                    switch s {
+                                    case .message: MessageCard()
+                                    case .deposit: PayCard()
+                                    default: EmptyView()
+                                    }
                                 }
                             }
                             .frame(height: slot)
@@ -190,7 +195,8 @@ struct QueueView: View {
                 .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
                 .scrollPosition(id: $day.feedPage)
                 .scrollIndicators(.hidden)
-                .contentMargins(.vertical, (geo.size.height - slot) / 2, for: .scrollContent)
+                .contentMargins(.top, topGap, for: .scrollContent)
+                .contentMargins(.bottom, max(12, geo.size.height - slot - topGap), for: .scrollContent)
                 .overlay(alignment: .bottom) {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
@@ -204,7 +210,7 @@ struct QueueView: View {
                     .frame(height: 36)
                     .background(Ink.surface, in: Capsule())
                     .overlay { Capsule().strokeBorder(Ink.hairline, lineWidth: 1) }
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 2)
                     .opacity(atEnd ? 1 : 0)
                     .offset(y: atEnd ? 0 : 10)
                     .animation(.spring(response: 0.4, dampingFraction: 0.85), value: atEnd)
